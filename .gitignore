@@ -1,26 +1,25 @@
-# Git
-.git/
-
-# OS
+# Git/OS
 .DS_Store
 
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.egg-info/
 .venv/
-.ruff_cache/
-.mypy_cache/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
 
-# Node
-node_modules/
-
-# Secrets
-.env
-
-# Local generated data
+# Local inputs/outputs
 .local/
+*.db
+*.sqlite
+*.sqlite3
 
-# Build artifacts
-dist.tar.gz
+# Secrets/local configuration
+.env

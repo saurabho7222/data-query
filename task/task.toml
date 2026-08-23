@@ -2,17 +2,17 @@ artifacts = ["/app/output.json"]
 
 [project]
 name = "data-query"
-description = "Generate deterministic sales analytics from a SQLite database."
+description = "Validate SQLite sales data and generate deterministic analytics reports."
 
 [metadata]
 category = "Data Querying and Databases"
 subcategory = "SQL querying"
-task_objective = ["query", "aggregate", "validate"]
-artifact_type = ["json_report"]
-expert_time_estimate_hours = 1
-difficulty_explanation = "Requires correct multi-table aggregation, deterministic ordering, empty-data behavior, and defensive SQLite input validation."
-solution_explanation = "A Python CLI opens the SQLite database read-only, validates the schema, runs aggregate SQL queries, and atomically writes a deterministic JSON report."
-verification_explanation = "Pytest creates isolated SQLite fixtures and checks exact aggregates, ordering, empty data, malformed inputs, and schema errors."
+task_objective = ["implement", "validate"]
+artifact_type = ["application", "report"]
+expert_time_estimate_hours = 2
+difficulty_explanation = "Requires relational validation, aggregate SQL, deterministic ordering, filtering, and atomic output behavior."
+solution_explanation = "Validate schema/data in read-only SQLite mode, apply consistent filters, aggregate completed-order revenue, then atomically serialize JSON/CSV outputs."
+verification_explanation = "Root pytest suite uses isolated SQLite fixtures to verify aggregates, filters, exports, invalid inputs, and sample generation."
 
 [verifier]
 timeout_sec = 120.0
@@ -23,8 +23,8 @@ timeout_sec = 120.0
 [environment]
 build_timeout_sec = 600.0
 cpus = 1
-memory_mb = 512
-storage_mb = 1024
+memory_mb = 2048
+storage_mb = 10240
 gpus = 0
 allow_internet = false
 mcp_servers = []
