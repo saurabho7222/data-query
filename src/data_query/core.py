@@ -17,6 +17,8 @@ REQUIRED_SCHEMA: dict[str, set[str]] = {
 }
 
 
+
+
 class Summary(TypedDict):
     total_customers: int
     total_orders: int
@@ -312,12 +314,12 @@ def write_report(
         _write_csv(
             options.customers_csv,
             ["customer_id", "name", "region", "orders", "revenue"],
-            report["top_customers"],
+            [dict(row) for row in report["top_customers"]],
         )
     if options.monthly_csv is not None:
         _write_csv(
             options.monthly_csv,
             ["month", "orders", "revenue"],
-            report["monthly_revenue"],
+            [dict(row) for row in report["monthly_revenue"]],
         )
     return report
