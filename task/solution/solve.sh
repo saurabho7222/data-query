@@ -1,9 +1,8 @@
-#!/bin/bash
-set -euo pipefail
+#!/usr/bin/env sh
+set -eu
 
-# Reference solution entry point.
-# Add the implementation under this directory and write the required outputs
-# to the absolute paths defined in ../instruction.md.
-#
-# Example:
-# python3 /solution/solve.py
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+INPUT_DB=${INPUT_DB:-/app/input.db}
+OUTPUT_JSON=${OUTPUT_JSON:-/app/output.json}
+
+exec python3 "$SCRIPT_DIR/solve.py" --input "$INPUT_DB" --output "$OUTPUT_JSON"
