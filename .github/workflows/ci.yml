@@ -46,6 +46,23 @@ jobs:
       - name: Smoke-test installed CLI
         run: python -m data_query --help
 
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Build wheel from source
+        run: python -m pip wheel . --no-deps --wheel-dir dist
+      - name: Install wheel into clean virtual environment
+        run: |
+          python -m venv /tmp/data-query-package-check
+          /tmp/data-query-package-check/bin/python -m pip install --no-deps dist/*.whl
+      - name: Smoke-test packaged console script
+        run: /tmp/data-query-package-check/bin/data-query --help
+
   docker:
     runs-on: ubuntu-latest
     steps:
