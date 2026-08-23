@@ -1,0 +1,28 @@
+services:
+  sample-db:
+    build:
+      context: .
+    command: ["python3", "examples/create_sample_db.py", "/data/input.db"]
+    volumes:
+      - ./.local:/data
+
+  report:
+    build:
+      context: .
+    depends_on:
+      sample-db:
+        condition: service_completed_successfully
+    command:
+      - data-query
+      - --input
+      - /data/input.db
+      - --output
+      - /data/report.json
+      - --customers-csv
+      - /data/customers.csv
+      - --monthly-csv
+      - /data/monthly.csv
+      - --log-level
+      - INFO
+    volumes:
+      - ./.local:/data

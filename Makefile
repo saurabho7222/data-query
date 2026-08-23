@@ -1,4 +1,4 @@
-.PHONY: install test coverage lint typecheck quality security package-check docker-build docker-test
+.PHONY: install test coverage lint typecheck quality security package-check docker-build docker-test compose-config compose-demo
 
 install:
 	python3 -m pip install -e .
@@ -34,3 +34,14 @@ docker-build:
 
 docker-test: docker-build
 	docker run --rm data-query python3 -m pytest tests -v
+
+compose-config:
+	docker compose config --quiet
+
+compose-demo:
+	mkdir -p .local
+	rm -f .local/input.db .local/report.json .local/customers.csv .local/monthly.csv
+	docker compose up --build --abort-on-container-exit --exit-code-from report report
+	test -s .local/report.json
+	test -s .local/customers.csv
+	test -s .local/monthly.csv
