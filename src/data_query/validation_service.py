@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .core import connect_read_only, validate_data, validate_schema
+from .validation import connect_read_only, validate_data, validate_schema
 
 
 def validate_database(path: Path) -> None:
