@@ -128,3 +128,17 @@ def test_non_sqlite_input_is_rejected(tmp_path: Path) -> None:
     assert result.returncode == 2
     assert "not a readable SQLite database" in result.stderr
     assert not output.exists()
+
+
+def test_sample_database_script_is_runnable(tmp_path: Path) -> None:
+    """The documented sample generator creates input that the solver can process."""
+    database = tmp_path / "sample.db"
+    output = tmp_path / "report.json"
+    generator = REPO_ROOT / "task" / "examples" / "create_sample_db.py"
+    created = subprocess.run([sys.executable, str(generator), str(database)], cwd=REPO_ROOT, capture_output=True, text=True, check=False)
+    assert created.returncode == 0, created.stderr
+    assert database.exists()
+    result = run_solver(database, output)
+    assert result.returncode == 0, result.stderr
+    report = json.loads(output.read_text(encoding="utf-8"))
+    assert report["summary"]["completed_revenue"] == 320.99
