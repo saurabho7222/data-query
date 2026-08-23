@@ -15,6 +15,13 @@ def test_main_success_writes_report(sales_db: Path, tmp_path: Path) -> None:
     assert output.exists()
 
 
+def test_validate_only_checks_database_without_output(sales_db: Path, tmp_path: Path) -> None:
+    output = tmp_path / "should-not-exist.json"
+    result = cli.main(["--input", str(sales_db), "--output", str(output), "--validate-only", "--verbose"])
+    assert result == 0
+    assert not output.exists()
+
+
 def test_main_returns_input_error_code(tmp_path: Path) -> None:
     result = cli.main(["--input", str(tmp_path / "missing.db"), "--output", str(tmp_path / "out.json")])
     assert result == 2

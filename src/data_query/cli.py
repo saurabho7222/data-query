@@ -4,16 +4,20 @@ from __future__ import annotations
 
 import argparse
 import logging
+import re
 import sqlite3
 from datetime import date
 from pathlib import Path
 
-from .core import InputError, ReportFilters, ReportOptions, write_report
+from .core import InputError, ReportFilters, ReportOptions, validate_database, write_report
 
 LOGGER = logging.getLogger("data_query")
+ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _iso_date(value: str) -> date:
+    if ISO_DATE_PATTERN.fullmatch(value) is None:
+        raise argparse.ArgumentTypeError("expected YYYY-MM-DD")
     try:
         return date.fromisoformat(value)
     except ValueError as exc:
@@ -30,6 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--top-limit", type=int, default=5, help="number of top customers to include (1-100)")
     parser.add_argument("--customers-csv", type=Path, help="optional CSV export of top customers")
     parser.add_argument("--monthly-csv", type=Path, help="optional CSV export of monthly revenue")
+    parser.add_argument("--validate-only", action="store_true", help="validate input and exit without writing reports")
     parser.add_argument("--verbose", action="store_true", help="enable informational logging")
     return parser
 
@@ -46,12 +51,15 @@ def main(argv: list[str] | None = None) -> int:
             end_date=args.end_date,
             top_limit=args.top_limit,
         )
-        options = ReportOptions(
-            output_json=args.output,
-            customers_csv=args.customers_csv,
-            monthly_csv=args.monthly_csv,
-        )
-        write_report(args.input, options, filters)
+        if args.validate_only:
+            validate_database(args.input)
+        else:
+            options = ReportOptions(
+                output_json=args.output,
+                customers_csv=args.customers_csv,
+                monthly_csv=args.monthly_csv,
+            )
+            write_report(args.input, options, filters)
     except InputError as exc:
         LOGGER.error("%s", exc)
         return 2
@@ -59,5 +67,8 @@ def main(argv: list[str] | None = None) -> int:
         LOGGER.error("SQLite query failed: %s", exc)
         return 3
 
-    LOGGER.info("report written to %s", args.output)
+    if args.validate_only:
+        LOGGER.info("input database is valid: %s", args.input)
+    else:
+        LOGGER.info("report written to %s", args.output)
     return 0
