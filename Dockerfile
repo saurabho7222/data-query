@@ -1,13 +1,21 @@
-FROM python:3.11.9-slim-bookworm
+FROM public.ecr.aws/docker/library/ubuntu:24.04@sha256:0d39fcc8335d6d74d5502f6df2d30119ff4790ebbb60b364818d5112d9e3e932
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/src
 
-WORKDIR /workspace
+WORKDIR /app
 
-COPY requirements.lock /workspace/requirements.lock
-RUN python -m pip install --no-cache-dir --no-deps -r /workspace/requirements.lock
+COPY requirements-dev.txt ./
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-pip \
+    && python3 -m pip install --break-system-packages --no-cache-dir -r requirements-dev.txt \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY task /workspace/task
+COPY pyproject.toml ./
+COPY src ./src
+COPY task ./task
+COPY tests ./tests
 
-CMD ["python3", "task/solution/solve.py", "--help"]
+CMD ["python3", "-m", "data_query", "--help"]
