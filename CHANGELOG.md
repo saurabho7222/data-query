@@ -5,13 +5,26 @@ All notable changes to this project are documented here.
 ## [0.2.0] - 2026-08-23
 
 ### Added
-- Conventional `src/data_query` Python package and CLI entry point.
-- Region, date-range, and top-customer filters.
+- Conventional `src/data_query` installable Python package and `data-query` console entry point.
+- Root-level discoverable test suite with coverage enforcement across Python 3.11 and 3.12.
+- Region, inclusive date-range, and bounded top-customer filters.
 - Optional CSV exports for customer and monthly aggregates.
+- Explicit CLI value validators for region labels and numeric limits.
 - Data-integrity validation for dates, monetary values, and relational references.
-- Root-level test suite with coverage enforcement.
-- Ruff, mypy, dependency-audit, secret-scan, and dependency-update configuration.
+- Output-path collision protection so reports cannot overwrite the source database or each other.
+- `--validate-only` database health-check mode that writes no artifacts.
+- Human-readable and structured JSON logging with configurable log levels.
+- Responsibility-based modules for models, validation, reporting, output writers, path safety, and logging.
+- `uv.lock`, pinned development dependencies, and Dependabot configuration.
+- Ruff linting, strict mypy checks, and a 90% minimum coverage gate.
+- Clean wheel build/install verification and Docker build/test verification in CI.
+- Dependency auditing, full-history Gitleaks scanning, and CodeQL static analysis.
+- `CLASSIFICATION.md`, `CONTRIBUTING.md`, `SECURITY.md`, `.env.example`, and reproducible Make targets.
 
 ### Changed
-- `task/solution/solve.py` is now a compatibility wrapper around the packaged CLI.
-- Project classification is explicitly documented as a Python data utility rather than IaC.
+- Repository layout is now a standalone Python application/data utility; the legacy task scaffold was removed.
+- Development dependency `pytest` was upgraded to `9.0.3` to address `PYSEC-2026-1845`.
+- Project classification is explicitly documented as a Python data-processing CLI rather than infrastructure-as-code.
+
+### Verification
+- GitHub Actions validates linting, strict type checking, tests, coverage, wheel packaging, Docker execution, dependency auditing, secret scanning, and CodeQL analysis on pushes and pull requests.

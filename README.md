@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/saurabho7222/data-query/actions/workflows/ci.yml/badge.svg)](https://github.com/saurabho7222/data-query/actions/workflows/ci.yml)
 [![Security](https://github.com/saurabho7222/data-query/actions/workflows/security.yml/badge.svg)](https://github.com/saurabho7222/data-query/actions/workflows/security.yml)
+[![CodeQL](https://github.com/saurabho7222/data-query/actions/workflows/codeql.yml/badge.svg)](https://github.com/saurabho7222/data-query/actions/workflows/codeql.yml)
 
 A typed Python data-utility CLI that validates a SQLite sales database and produces deterministic analytics in JSON, with optional CSV exports.
 
@@ -20,7 +21,8 @@ A typed Python data-utility CLI that validates a SQLite sales database and produ
 - validate-only database health checks that write no artifacts;
 - human-readable or structured JSON logging;
 - conventional `src/` package and root `tests/` suite;
-- coverage, lint, type-check, dependency-audit, secret-scan, Docker, and CI gates.
+- wheel build/install verification in a clean virtual environment;
+- coverage, lint, strict type-check, dependency-audit, secret-scan, CodeQL, Docker, and CI gates.
 
 ## Requirements
 
@@ -113,12 +115,13 @@ Output paths are normalized before execution. A report or CSV export cannot over
 ## Tests and quality gates
 
 ```bash
-make test       # behavioral/unit suite
-make coverage   # >= 90% required
-make lint       # Ruff
-make typecheck  # mypy strict mode
-make quality    # lint + typecheck + coverage
-make security   # dependency audit
+make test          # behavioral/unit suite
+make coverage      # >= 90% required
+make lint          # Ruff
+make typecheck     # mypy strict mode
+make quality       # lint + typecheck + coverage
+make security      # dependency audit
+make package-check # wheel build + clean-venv install + CLI smoke test
 ```
 
 The test suite lives under the conventional root `tests/` directory so standard Python tooling and repository analyzers can discover it without project-specific knowledge.
@@ -148,21 +151,23 @@ SQLite is embedded, so no database server or sibling service is required; a Comp
 ## Project structure
 
 ```text
-src/data_query/                 application package and CLI
-src/data_query/models.py       typed public configuration/report models
-src/data_query/validation.py   SQLite schema and row-integrity checks
-src/data_query/reporting.py    SQL aggregation logic
-src/data_query/writers.py      atomic JSON/CSV output writers
-src/data_query/path_safety.py  output collision protection
+src/data_query/                  application package and CLI
+src/data_query/models.py        typed public configuration/report models
+src/data_query/validation.py    SQLite schema and row-integrity checks
+src/data_query/reporting.py     SQL aggregation logic
+src/data_query/writers.py       atomic JSON/CSV output writers
+src/data_query/path_safety.py   output collision protection
 src/data_query/logging_utils.py structured logging support
-examples/                       runnable sample database generator
-tests/                          discoverable behavioral/unit tests
-.github/workflows/ci.yml        lint, type, coverage, Docker gates
-.github/workflows/security.yml  dependency and secret scanning
-.github/dependabot.yml          dependency update automation
-pyproject.toml                  package + Ruff/mypy/pytest/coverage config
-uv.lock                         runtime dependency lock
-requirements-dev.txt            pinned development/security tools
+src/data_query/input_validation.py explicit CLI value validation
+examples/                        runnable sample database generator
+tests/                           discoverable behavioral/unit tests
+.github/workflows/ci.yml         lint, type, coverage, package, Docker gates
+.github/workflows/security.yml   dependency and secret scanning
+.github/workflows/codeql.yml     CodeQL static analysis
+.github/dependabot.yml           dependency update automation
+pyproject.toml                   package + Ruff/mypy/pytest/coverage config
+uv.lock                          runtime dependency lock
+requirements-dev.txt             pinned development/security tools
 ```
 
 ## Development
