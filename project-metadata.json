@@ -1,6 +1,7 @@
 {
   "name": "data-query",
   "project_type": "cli-application",
+  "package_type": "python-application",
   "category": "application",
   "domain": "data-processing",
   "language": "python",
@@ -8,5 +9,12 @@
   "database": "embedded-sqlite",
   "infrastructure_as_code": false,
   "service": false,
-  "self_contained": true
+  "self_contained": true,
+  "schema_validation": "pydantic",
+  "runtime_dependency_policy": "exact-pins-with-generated-lock",
+  "runtime_dependencies": [
+    "pydantic==2.13.4"
+  ],
+  "runtime_dependency_count": 1,
+  "lockfile": "uv.lock"
 }
