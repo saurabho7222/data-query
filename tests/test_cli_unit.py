@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 
@@ -33,3 +34,46 @@ def test_parser_rejects_bad_date() -> None:
     parser = cli.build_parser()
     with pytest.raises(SystemExit):
         parser.parse_args(["--start-date", "02/01/2026"])
+
+
+def test_json_logging_reports_validation_failure(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
+    missing = tmp_path / "missing.db"
+    result = cli.main(
+        [
+            "--input",
+            str(missing),
+            "--output",
+            str(tmp_path / "out.json"),
+            "--log-format",
+            "json",
+            "--log-level",
+            "ERROR",
+        ]
+    )
+    assert result == 2
+    payload = json.loads(capsys.readouterr().err.strip())
+    assert payload["level"] == "error"
+    assert payload["event"] == "validation_failed"
+    assert payload["error_type"] == "input"
+    assert payload["input_path"] == str(missing)
+
+
+def test_json_logging_reports_success(capsys: pytest.CaptureFixture[str], sales_db: Path, tmp_path: Path) -> None:
+    output = tmp_path / "report.json"
+    result = cli.main(
+        [
+            "--input",
+            str(sales_db),
+            "--output",
+            str(output),
+            "--log-format",
+            "json",
+            "--log-level",
+            "INFO",
+        ]
+    )
+    assert result == 0
+    payload = json.loads(capsys.readouterr().err.strip())
+    assert payload["level"] == "info"
+    assert payload["event"] == "report_written"
+    assert payload["output_path"] == str(output)
