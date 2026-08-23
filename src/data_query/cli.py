@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 
 from .core import InputError, ReportFilters, ReportOptions, write_report
+from .input_validation import validate_region_name, validate_top_limit
 from .logging_utils import configure_logger
 from .validation_service import validate_database
 
@@ -24,14 +25,28 @@ def _iso_date(value: str) -> date:
         raise argparse.ArgumentTypeError("expected YYYY-MM-DD") from exc
 
 
+def _region(value: str) -> str:
+    try:
+        return validate_region_name(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
+def _top_limit(value: str) -> int:
+    try:
+        return validate_top_limit(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Generate a deterministic analytics report from SQLite sales data.")
     parser.add_argument("--input", type=Path, default=Path("/app/input.db"), help="SQLite input database")
     parser.add_argument("--output", type=Path, default=Path("/app/output.json"), help="JSON report path")
-    parser.add_argument("--region", help="restrict report data to one customer region")
+    parser.add_argument("--region", type=_region, help="restrict report data to one customer region")
     parser.add_argument("--start-date", type=_iso_date, help="include orders on/after YYYY-MM-DD")
     parser.add_argument("--end-date", type=_iso_date, help="include orders on/before YYYY-MM-DD")
-    parser.add_argument("--top-limit", type=int, default=5, help="number of top customers to include (1-100)")
+    parser.add_argument("--top-limit", type=_top_limit, default=5, help="number of top customers to include (1-100)")
     parser.add_argument("--customers-csv", type=Path, help="optional CSV export of top customers")
     parser.add_argument("--monthly-csv", type=Path, help="optional CSV export of monthly revenue")
     parser.add_argument("--validate-only", action="store_true", help="validate the database without writing report files")
