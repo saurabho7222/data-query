@@ -1,0 +1,29 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Build wheel from tagged source
+        run: python -m pip wheel . --no-deps --wheel-dir dist
+      - name: Verify tagged wheel in a clean environment
+        run: |
+          python -m venv /tmp/data-query-release-check
+          /tmp/data-query-release-check/bin/python -m pip install --no-deps dist/*.whl
+          /tmp/data-query-release-check/bin/data-query --help
+      - name: Publish GitHub release from the existing tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.whl --verify-tag --generate-notes --title "$GITHUB_REF_NAME"
