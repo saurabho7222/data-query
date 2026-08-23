@@ -9,7 +9,7 @@ from datetime import date
 from pathlib import Path
 
 from .core import InputError, ReportFilters, ReportOptions, write_report
-from .input_validation import validate_region_name, validate_top_limit
+from .input_validation import validate_iso_date, validate_region_name, validate_top_limit
 from .logging_utils import configure_logger
 from .validation_service import validate_database
 
@@ -20,9 +20,9 @@ LOG_FORMATS = ("text", "json")
 
 def _iso_date(value: str) -> date:
     try:
-        return date.fromisoformat(value)
+        return validate_iso_date(value)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError("expected YYYY-MM-DD") from exc
+        raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
 def _region(value: str) -> str:
