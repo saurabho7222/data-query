@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "data-query"
+version = "0.2.0"
+description = "A typed SQLite analytics CLI with deterministic JSON and CSV reporting."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+data-query = "data_query.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+source = ["data_query"]
+omit = ["src/data_query/__main__.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 90
+
+[tool.ruff]
+target-version = "py311"
+line-length = 130
+src = ["src", "tests", "task"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
+files = ["src/data_query", "task/solution", "task/examples"]
+strict = true
+pretty = true
+show_error_codes = true
