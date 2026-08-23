@@ -10,13 +10,13 @@ from datetime import date
 from pathlib import Path
 from typing import Any, TypedDict
 
+from .path_safety import find_output_path_collision
+
 REQUIRED_SCHEMA: dict[str, set[str]] = {
     "customers": {"id", "name", "region"},
     "orders": {"id", "customer_id", "order_date", "status"},
     "order_items": {"order_id", "product", "quantity", "unit_price"},
 }
-
-
 
 
 class Summary(TypedDict):
@@ -86,6 +86,7 @@ class ReportOptions:
 
 def connect_read_only(path: Path) -> sqlite3.Connection:
     """Open a SQLite database in read-only/query-only mode."""
+
     if not path.exists():
         raise InputError(f"input database does not exist: {path}")
     if not path.is_file():
@@ -103,6 +104,7 @@ def connect_read_only(path: Path) -> sqlite3.Connection:
 
 def validate_schema(connection: sqlite3.Connection) -> None:
     """Verify that all tables and columns required by the report are present."""
+
     missing: list[str] = []
     for table, required_columns in REQUIRED_SCHEMA.items():
         rows = connection.execute(f'PRAGMA table_info("{table}")').fetchall()
@@ -120,6 +122,7 @@ def validate_schema(connection: sqlite3.Connection) -> None:
 
 def validate_data(connection: sqlite3.Connection) -> None:
     """Reject malformed rows that would make monetary/date aggregates unreliable."""
+
     invalid_item = connection.execute(
         """
         SELECT rowid, quantity, unit_price
@@ -194,6 +197,7 @@ def _scope(filters: ReportFilters, *, customer_alias: str, order_alias: str) -> 
 
 def build_report(connection: sqlite3.Connection, filters: ReportFilters | None = None) -> Report:
     """Build deterministic aggregate data from a validated database."""
+
     filters = filters or ReportFilters()
     scope, params = _scope(filters, customer_alias="c", order_alias="o")
 
@@ -301,6 +305,18 @@ def write_report(
     filters: ReportFilters | None = None,
 ) -> Report:
     """Validate input, build a report, and atomically write requested outputs."""
+
+    collision = find_output_path_collision(
+        input_db,
+        {
+            "output_json": options.output_json,
+            "customers_csv": options.customers_csv,
+            "monthly_csv": options.monthly_csv,
+        },
+    )
+    if collision is not None:
+        raise InputError(collision)
+
     connection = connect_read_only(input_db)
     try:
         validate_schema(connection)
