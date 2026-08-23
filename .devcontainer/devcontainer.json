@@ -1,0 +1,19 @@
+{
+  "name": "data-query",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspaces/data-query",
+  "overrideCommand": true,
+  "postCreateCommand": "python3 -m pip install -e . && python3 -m pip install -r requirements-dev.txt && python3 -m pytest --cov=data_query --cov-fail-under=90",
+  "remoteUser": "root",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "charliermarsh.ruff"
+      ]
+    }
+  }
+}
