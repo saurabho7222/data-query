@@ -55,7 +55,7 @@ To build the image, generate a sample SQLite database, run the CLI, and produce 
 make compose-demo
 ```
 
-The command writes `.local/input.db`, `.local/report.json`, `.local/customers.csv`, and `.local/monthly.csv`. The Compose model has only two short-lived application jobs: `sample-db` creates the embedded SQLite fixture and `report` runs after it completes successfully. No database server, cloud account, network service, or sibling repository is required.
+The command writes `.local/input.db`, `.local/report.json`, `.local/customers.csv`, and `.local/monthly.csv`. The `docker-compose.yml` model has only two short-lived application jobs: `sample-db` creates the embedded SQLite fixture and `report` runs after it completes successfully. No database server, cloud account, network service, or sibling repository is required.
 
 ## Run the CLI
 
@@ -134,7 +134,7 @@ make quality                      # lint + typecheck + coverage
 make security                     # dependency vulnerability audit
 python scripts/check_dependency_freshness.py  # exact direct-pin freshness
 make package-check                # wheel build + clean-venv install + CLI smoke test
-make compose-config               # validate Compose model
+make compose-config               # validate Docker Compose model
 make compose-demo                 # build + isolated end-to-end run
 ```
 
@@ -171,11 +171,12 @@ src/data_query/input_validation.py explicit CLI trust-boundary validation
 examples/                         runnable sample database generator
 scripts/                          maintenance/freshness checks
 tests/                            discoverable behavioral/unit tests
-compose.yaml                      one-command isolated end-to-end execution
+docker-compose.yml                one-command isolated end-to-end execution
 project-metadata.json             machine-readable application classification
 .github/workflows/ci.yml          lint, type, coverage, package, Docker/Compose gates
 .github/workflows/security.yml    dependency audit/freshness and secret scanning
 .github/workflows/codeql.yml      CodeQL static analysis
+.github/workflows/release.yml     verified tag-driven wheel release
 .github/dependabot.yml            pip + GitHub Actions update automation
 pyproject.toml                    package metadata, project type, quality config
 uv.lock                           runtime dependency lock
