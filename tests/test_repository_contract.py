@@ -43,3 +43,15 @@ def test_conventional_compose_contract_is_discoverable() -> None:
     assert "sample-db:" in content
     assert "report:" in content
     assert "service_completed_successfully" in content
+
+
+def test_devcontainer_is_valid_and_runs_quality_setup() -> None:
+    config_path = REPO_ROOT / ".devcontainer" / "devcontainer.json"
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+
+    assert payload["build"] == {"dockerfile": "../Dockerfile", "context": ".."}
+    assert payload["workspaceFolder"] == "/workspaces/data-query"
+    assert payload["overrideCommand"] is True
+    assert "pip install -e ." in payload["postCreateCommand"]
+    assert "pytest" in payload["postCreateCommand"]
+    assert "--cov-fail-under=90" in payload["postCreateCommand"]
