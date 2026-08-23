@@ -7,8 +7,16 @@ from pathlib import Path
 
 import pytest
 
-from data_query.core import InputError, ReportFilters, ReportOptions, connect_read_only, validate_data, validate_schema, write_report
 from conftest import create_database
+from data_query.core import (
+    InputError,
+    ReportFilters,
+    ReportOptions,
+    connect_read_only,
+    validate_data,
+    validate_schema,
+    write_report,
+)
 
 
 def test_generates_expected_report(sales_db: Path, tmp_path: Path) -> None:
