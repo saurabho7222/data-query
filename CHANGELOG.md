@@ -4,20 +4,35 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+No unreleased user-visible changes.
+
+## [0.2.1] - 2026-08-23
+
 ### Added
-- Machine-readable `project_type = "cli-application"` metadata in `pyproject.toml` plus `project-metadata.json` so automated classifiers do not infer infrastructure from Docker/CI artifacts.
-- Expanded `CLASSIFICATION.md` with explicit zero-IaC indicators and embedded-SQLite rationale.
+- Machine-readable `project_type = "cli-application"` metadata in `pyproject.toml` plus `project-metadata.json` with explicit `infrastructure_as_code = false`.
 - `docker-compose.yml` and `make compose-demo` for one-command isolated sample-database generation plus JSON/CSV report execution.
-- CI validation of the Compose model and the full self-contained Compose demo.
-- Scanner-visible CLI trust-boundary markers and exact `InputError` assertions for invalid region/top-limit values.
-- A direct dependency freshness check against PyPI, enforced by the scheduled/push/PR Security workflow.
-- A tag-triggered release workflow that verifies a built wheel in a clean environment before publishing a GitHub Release.
 - A tested `.devcontainer/devcontainer.json` setup for reproducible editor/container onboarding.
+- A canonical Pydantic `ReportFilters` schema in `src/data_query/schemas.py` covering region bounds, ISO dates, date ordering, and `top_limit` bounds.
+- An application error hierarchy in `src/data_query/errors.py` while preserving the public `InputError` API.
+- SQLite connection hardening with URI-safe filenames, read-only/query-only mode, `trusted_schema=OFF`, foreign keys, busy timeout, and `PRAGMA quick_check`.
+- Architecture documentation covering data flow, trust boundaries, failure handling, and reproducibility.
+- Runtime dependency freshness checks alongside development dependency checks, with CI artifact upload for the audit result.
+- Locked-runtime CI verification using `uv lock --check` and `uv sync --frozen`.
+- A tag/release workflow that verifies a built wheel in a clean environment before publishing a GitHub Release.
 
 ### Changed
+- Runtime validation now uses the exactly pinned `pydantic==2.13.4` dependency; the full transitive graph is generated into `uv.lock`.
+- Analytics SQL is now static query text with bound values instead of dynamically assembled filter SQL.
+- SQLite schema inspection now uses a parameterized `pragma_table_info(?)` table-valued query.
+- Dependency auditing now covers the locked runtime project and exactly pinned development tools.
 - Refreshed pinned development tools to current verified releases: mypy 2.3.1, pip-audit 2.10.1, pytest 9.1.1, pytest-cov 7.1.0, and Ruff 0.16.4.
-- Updated GitHub Actions runtime generations to `actions/checkout@v7`, `actions/setup-python@v7`, and `github/codeql-action@v4`.
-- Split CI quality checks into explicit `lint`, `typecheck`, and `tests` jobs using direct `ruff`, `mypy`, and `pytest` commands for clearer failures and scanner detection.
+- Updated GitHub Actions generations to `actions/checkout@v7`, `actions/setup-python@v7`, `actions/upload-artifact@v7`, and `github/codeql-action@v4`.
+- CI quality checks are exposed as explicit `lint`, `typecheck`, and matrixed `tests` jobs, plus package, dependency-lock, and Docker/Compose jobs.
+
+### Security
+- Added explicit tests proving SQL metacharacters in region values remain literal bound data.
+- Added tests for read-only SQLite enforcement, defensive PRAGMAs, and URI-reserved database filenames.
+- Dependency freshness evidence is retained as a workflow artifact on every Security run.
 
 ## [0.2.0] - 2026-08-23
 
@@ -39,8 +54,8 @@ All notable changes to this project are documented here.
 - `CLASSIFICATION.md`, `CONTRIBUTING.md`, `SECURITY.md`, `.env.example`, and reproducible Make targets.
 
 ### Changed
-- Repository layout is now a standalone Python application/data utility; the legacy task scaffold was removed.
-- Development dependency `pytest` was upgraded to `9.0.3` to address `PYSEC-2026-1845`.
+- Repository layout is a standalone Python application/data utility.
+- Development dependency `pytest` was upgraded to a patched release.
 - Project classification is explicitly documented as a Python data-processing CLI rather than infrastructure-as-code.
 
 ### Verification

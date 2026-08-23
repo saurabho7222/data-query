@@ -4,36 +4,42 @@
 [![Security](https://github.com/saurabho7222/data-query/actions/workflows/security.yml/badge.svg)](https://github.com/saurabho7222/data-query/actions/workflows/security.yml)
 [![CodeQL](https://github.com/saurabho7222/data-query/actions/workflows/codeql.yml/badge.svg)](https://github.com/saurabho7222/data-query/actions/workflows/codeql.yml)
 
-A typed Python data-processing CLI application that validates a SQLite sales database and produces deterministic analytics in JSON, with optional CSV exports.
+A typed Python **CLI application** for validating a SQLite sales database and producing deterministic JSON analytics with optional CSV exports.
 
-> **Project type:** `cli-application`. This is **not infrastructure-as-code**. The canonical machine-readable marker lives in `[tool.data-query]` in `pyproject.toml` and is mirrored in `project-metadata.json`; `infrastructure_as_code = false`. See [CLASSIFICATION.md](CLASSIFICATION.md#why-this-is-not-infrastructure) for the explicit rationale and zero-IaC indicators.
+> **Project type:** `cli-application`. This project does not provision infrastructure. The canonical metadata is in `[tool.data-query]` in `pyproject.toml` and `project-metadata.json`; see [CLASSIFICATION.md](CLASSIFICATION.md).
 
 ## Features
 
-- read-only SQLite access with schema and data-integrity validation;
-- overall customer/order/revenue metrics;
-- top customers by completed-order revenue;
-- monthly completed revenue;
-- optional customer-region and inclusive date-range filters;
-- configurable top-customer limit with explicit trust-boundary validation;
-- deterministic JSON plus optional customer/monthly CSV exports;
-- atomic output writes and path-collision protection;
-- validate-only database health checks that write no artifacts;
-- human-readable or structured JSON logging;
-- conventional `src/` package and root `tests/` suite;
-- one-command self-contained Docker Compose demo;
-- tested Dev Container onboarding for reproducible editor environments;
-- wheel build/install verification in a clean virtual environment;
-- coverage, explicit lint/type/test jobs, dependency-audit, dependency-freshness, secret-scan, CodeQL, Docker, and CI gates.
+- declarative Pydantic schema for region, date, date-range, and top-limit validation;
+- hardened read-only SQLite access with integrity checks and defensive PRAGMAs;
+- static parameterized SQL for analytics queries;
+- database schema and row-integrity validation;
+- customer/order/revenue summary, top-customer, and monthly-revenue analytics;
+- optional region/date filters and CSV exports;
+- atomic output writes and output-path collision protection;
+- validate-only mode and structured JSON logging;
+- reproducible Docker Compose and Dev Container workflows;
+- CI gates for dependency lock consistency, linting, strict typing, tests/coverage, packaging, Docker/Compose, dependency audits, secret scanning, and CodeQL.
 
 ## Requirements
 
 - Python 3.11+
 - `pip`
-- Docker with the Compose plugin (optional; used for isolated verification)
-- A Dev Container compatible editor (optional)
+- Docker with the Compose plugin for isolated container verification (optional)
+- a Dev Container compatible editor (optional)
 
-The application runtime uses only the Python standard library. `uv.lock` records the dependency-free runtime package graph in a standard lockfile. Development and verification tools are exactly pinned in `requirements-dev.txt`, checked against PyPI by `scripts/check_dependency_freshness.py`, and kept current by Dependabot.
+### Runtime dependencies
+
+`pydantic==2.13.4` is the single direct runtime dependency. It provides the canonical declarative `ReportFilters` schema and CLI boundary validation. The complete transitive runtime graph is generated in `uv.lock`.
+
+CI verifies dependency reproducibility with:
+
+```bash
+uv lock --check
+uv sync --frozen
+```
+
+Development/security tools are exactly pinned in `requirements-dev.txt`. `scripts/check_dependency_freshness.py` checks both runtime and development direct pins against PyPI, and the Security workflow retains the result as an artifact.
 
 ## Fresh-clone setup
 
@@ -47,23 +53,28 @@ python -m pip install -r requirements-dev.txt
 make quality
 ```
 
-`make quality` runs linting, strict static type checking, and the coverage-gated test suite. GitHub Actions exposes these as explicit `lint`, `typecheck`, and matrixed `tests` jobs so both humans and repository scanners can identify the quality gates directly.
+See [docs/architecture.md](docs/architecture.md) for the component boundaries, trust boundaries, SQLite safety invariants, failure model, and verification strategy.
 
 ## Dev Container
 
-The repository includes `.devcontainer/devcontainer.json` for reproducible development without manually configuring Python or quality tools. Open the repository in a Dev Container compatible editor and rebuild/open it in the container. The container uses the repository Dockerfile, mounts the checkout as `/workspaces/data-query`, installs the package and pinned development tools, and runs the coverage-gated test suite in `postCreateCommand`.
-
-The Dev Container configuration itself is parsed and asserted by `tests/test_repository_contract.py`, so onboarding configuration drift fails the normal test suite.
+`.devcontainer/devcontainer.json` provides a reproducible editor/container environment. Its `postCreateCommand` installs the package and pinned development tools and runs the coverage-gated test suite. `tests/test_repository_contract.py` verifies the Dev Container configuration alongside the repository classification contract.
 
 ## One-command isolated run
-
-To build the image, generate a sample SQLite database, run the CLI, and produce JSON plus both CSV exports without installing Python locally:
 
 ```bash
 make compose-demo
 ```
 
-The command writes `.local/input.db`, `.local/report.json`, `.local/customers.csv`, and `.local/monthly.csv`. The `docker-compose.yml` model has only two short-lived application jobs: `sample-db` creates the embedded SQLite fixture and `report` runs after it completes successfully. No database server, cloud account, network service, or sibling repository is required.
+This builds the image, creates a sample SQLite database, and writes:
+
+```text
+.local/input.db
+.local/report.json
+.local/customers.csv
+.local/monthly.csv
+```
+
+The Compose model contains only short-lived application jobs; SQLite is embedded, so no database server, cloud account, or external service is required.
 
 ## Run the CLI
 
@@ -73,13 +84,13 @@ Create a sample database:
 python examples/create_sample_db.py .local/input.db
 ```
 
-Generate the default JSON report:
+Generate a JSON report:
 
 ```bash
 data-query --input .local/input.db --output .local/report.json
 ```
 
-Filter to the north region and February 2026:
+Filter by region and inclusive date range:
 
 ```bash
 data-query \
@@ -91,7 +102,7 @@ data-query \
   --top-limit 3
 ```
 
-Export CSV views alongside JSON:
+Write CSV views too:
 
 ```bash
 data-query \
@@ -101,13 +112,13 @@ data-query \
   --monthly-csv .local/monthly.csv
 ```
 
-Validate the database without writing report files:
+Validate without writing outputs:
 
 ```bash
 data-query --input .local/input.db --validate-only --log-level INFO
 ```
 
-Emit machine-readable logs for automation:
+Emit structured logs:
 
 ```bash
 data-query \
@@ -119,7 +130,7 @@ data-query \
 
 ## Input contract
 
-The SQLite database must contain:
+Required SQLite tables/columns:
 
 ```text
 customers(id, name, region)
@@ -127,71 +138,54 @@ orders(id, customer_id, order_date, status)
 order_items(order_id, product, quantity, unit_price)
 ```
 
-Validation rejects missing tables/columns, invalid `YYYY-MM-DD` order dates, negative/non-numeric quantity or price values, orders without customers, and order items without orders. CLI filter values are explicitly validated before query execution. Only `orders.status = 'completed'` contributes to revenue.
+`src/data_query/schemas.py` is the canonical configuration schema. Database validation rejects missing tables/columns, malformed `YYYY-MM-DD` dates, negative or non-numeric quantity/price values, orders without customers, and order items without orders. Query values use SQLite parameter binding rather than SQL string interpolation.
 
-Output paths are normalized before execution. A report or CSV export cannot overwrite the input database, and two output options cannot target the same file.
+Output paths are normalized before execution. Outputs cannot overwrite the input database, and two output options cannot target the same destination.
 
-## Tests and quality gates
+## Quality and security checks
 
 ```bash
-make test                         # behavioral/unit suite
-make coverage                     # >= 90% required
+make test
+make coverage                     # >= 90%
 make lint                         # Ruff
-make typecheck                    # mypy strict mode
-make quality                      # lint + typecheck + coverage
-make security                     # dependency vulnerability audit
-python scripts/check_dependency_freshness.py  # exact direct-pin freshness
-make package-check                # wheel build + clean-venv install + CLI smoke test
-make compose-config               # validate Docker Compose model
-make compose-demo                 # build + isolated end-to-end run
-```
-
-The test suite lives under the conventional root `tests/` directory so standard Python tooling and repository analyzers can discover it without project-specific knowledge.
-
-## Docker
-
-Build and test the same environment CI uses:
-
-```bash
-docker build -t data-query .
-docker run --rm data-query python3 -m pytest tests -v
-```
-
-Or use the self-contained Compose workflow:
-
-```bash
+make typecheck                    # mypy strict
+make quality
+uv lock --check
+uv sync --frozen
+python scripts/check_dependency_freshness.py
+make security
+make package-check
+make compose-config
 make compose-demo
 ```
 
-SQLite is embedded, so Compose does not provision external infrastructure. It exists only to make the complete application exercise reproducible with one command in an isolated container environment.
+The GitHub Actions test matrix covers Python 3.11 and 3.12. The Security workflow audits the locked runtime graph and pinned development dependencies, uploads dependency-freshness evidence, scans repository history with Gitleaks, and CodeQL runs separately.
 
 ## Project structure
 
 ```text
-src/data_query/                    application package and CLI
-src/data_query/models.py           typed public configuration/report models
-src/data_query/validation.py       SQLite schema and row-integrity checks
-src/data_query/reporting.py        SQL aggregation logic
-src/data_query/writers.py          atomic JSON/CSV output writers
+src/data_query/errors.py           application error hierarchy
+src/data_query/schemas.py          declarative input/config validation
+src/data_query/models.py           typed report models and output options
+src/data_query/validation.py       hardened SQLite/schema/data checks
+src/data_query/reporting.py        static parameterized analytics SQL
+src/data_query/writers.py          atomic JSON/CSV writers
 src/data_query/path_safety.py      output collision protection
-src/data_query/logging_utils.py    structured logging support
-src/data_query/input_validation.py explicit CLI trust-boundary validation
-examples/                          runnable sample database generator
-scripts/                           maintenance/freshness checks
-tests/                             discoverable behavioral/unit tests
-.devcontainer/devcontainer.json    reproducible editor/container onboarding
-docker-compose.yml                 one-command isolated end-to-end execution
-project-metadata.json              machine-readable application classification
-.github/workflows/ci.yml           explicit lint/typecheck/tests + package/Docker gates
-.github/workflows/security.yml     dependency audit/freshness and secret scanning
-.github/workflows/codeql.yml       CodeQL static analysis
-.github/workflows/release.yml      verified tag-driven wheel release
-.github/dependabot.yml             pip + GitHub Actions update automation
-pyproject.toml                     package metadata, project type, quality config
-uv.lock                            runtime dependency lock
-requirements-dev.txt               exact development/security tool pins
+src/data_query/logging_utils.py    structured logging
+src/data_query/input_validation.py CLI validation adapters
+docs/architecture.md               architecture and trust-boundary design
+examples/                          sample database generator
+scripts/                           maintenance checks
+tests/                             behavioral/unit/contract tests
+.devcontainer/devcontainer.json    reproducible development container
+docker-compose.yml                 isolated end-to-end execution
+project-metadata.json              machine-readable application metadata
+.github/workflows/                 CI, security, CodeQL, and release automation
+pyproject.toml                     package/runtime/quality configuration
+uv.lock                            generated runtime dependency lock
+requirements-dev.txt               exact development/security pins
 ```
 
 ## Development
 
-See `CONTRIBUTING.md`. Keep each feature or fix in a focused commit with the tests that demonstrate the new behavior. `CHANGELOG.md` records user-visible changes. Genuine maintenance history should grow through real development sessions; contributor identity and timestamps must not be fabricated.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Keep features and fixes focused and include the tests that demonstrate their behavior. `CHANGELOG.md` records user-visible changes.
