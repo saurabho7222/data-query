@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .core import InputError, ReportFilters, ReportOptions, write_report
 from .logging_utils import configure_logger
+from .validation_service import validate_database
 
 LOGGER = logging.getLogger("data_query")
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
@@ -33,6 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--top-limit", type=int, default=5, help="number of top customers to include (1-100)")
     parser.add_argument("--customers-csv", type=Path, help="optional CSV export of top customers")
     parser.add_argument("--monthly-csv", type=Path, help="optional CSV export of monthly revenue")
+    parser.add_argument("--validate-only", action="store_true", help="validate the database without writing report files")
     parser.add_argument("--verbose", action="store_true", help="enable informational logging (compatibility alias)")
     parser.add_argument("--log-level", choices=LOG_LEVELS, help="explicit log threshold")
     parser.add_argument("--log-format", choices=LOG_FORMATS, default="text", help="log output format")
@@ -46,6 +48,14 @@ def main(argv: list[str] | None = None) -> int:
     configure_logger(LOGGER, level=log_level, log_format=args.log_format)
 
     try:
+        if args.validate_only:
+            validate_database(args.input)
+            LOGGER.info(
+                "database validation passed",
+                extra={"event": "database_valid", "input_path": str(args.input)},
+            )
+            return 0
+
         filters = ReportFilters(
             region=args.region,
             start_date=args.start_date,

@@ -77,3 +77,41 @@ def test_json_logging_reports_success(capsys: pytest.CaptureFixture[str], sales_
     assert payload["level"] == "info"
     assert payload["event"] == "report_written"
     assert payload["output_path"] == str(output)
+
+
+def test_validate_only_checks_database_without_writing_report(
+    capsys: pytest.CaptureFixture[str], sales_db: Path, tmp_path: Path
+) -> None:
+    output = tmp_path / "should-not-exist.json"
+    result = cli.main(
+        [
+            "--input",
+            str(sales_db),
+            "--output",
+            str(output),
+            "--validate-only",
+            "--log-format",
+            "json",
+            "--log-level",
+            "INFO",
+        ]
+    )
+    assert result == 0
+    assert not output.exists()
+    payload = json.loads(capsys.readouterr().err.strip())
+    assert payload["event"] == "database_valid"
+    assert payload["input_path"] == str(sales_db)
+
+
+def test_validate_only_rejects_bad_rows(sales_db: Path, tmp_path: Path) -> None:
+    connection = sqlite3.connect(sales_db)
+    try:
+        connection.execute("UPDATE order_items SET quantity = -1 WHERE rowid = 1")
+        connection.commit()
+    finally:
+        connection.close()
+
+    output = tmp_path / "should-not-exist.json"
+    result = cli.main(["--input", str(sales_db), "--output", str(output), "--validate-only"])
+    assert result == 2
+    assert not output.exists()
