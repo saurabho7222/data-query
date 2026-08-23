@@ -29,6 +29,20 @@ def test_json_metadata_mirrors_project_type_contract() -> None:
     assert payload["self_contained"] is True
 
 
+def test_runtime_dependency_metadata_matches_pyproject_and_lock() -> None:
+    project = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    metadata = json.loads((REPO_ROOT / "project-metadata.json").read_text(encoding="utf-8"))
+    runtime_dependencies = project["project"]["dependencies"]
+
+    assert runtime_dependencies == metadata["runtime_dependencies"]
+    assert metadata["runtime_dependency_count"] == len(runtime_dependencies) == 1
+    assert metadata["lockfile"] == "uv.lock"
+
+    lock_text = (REPO_ROOT / "uv.lock").read_text(encoding="utf-8")
+    assert 'name = "pydantic"' in lock_text
+    assert 'name = "pydantic-core"' in lock_text
+
+
 def test_repository_contains_no_infrastructure_as_code_artifacts() -> None:
     assert not list(REPO_ROOT.rglob("*.tf"))
     assert not list(REPO_ROOT.rglob("Chart.yaml"))
@@ -55,3 +69,13 @@ def test_devcontainer_is_valid_and_runs_quality_setup() -> None:
     assert "pip install -e ." in payload["postCreateCommand"]
     assert "pytest" in payload["postCreateCommand"]
     assert "--cov-fail-under=90" in payload["postCreateCommand"]
+
+
+def test_release_workflow_verifies_and_tags_versioned_releases() -> None:
+    release = (REPO_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+
+    assert "refs/heads/main" in release
+    assert "git tag -a" in release
+    assert "python -m pip install dist/*.whl" in release
+    assert "gh release create" in release
+    assert "--verify-tag" in release
