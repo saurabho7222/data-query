@@ -12,23 +12,37 @@ REQUIRED_SCHEMA: dict[str, set[str]] = {
     "orders": {"id", "customer_id", "order_date", "status"},
     "order_items": {"order_id", "product", "quantity", "unit_price"},
 }
+BUSY_TIMEOUT_MS = 5000
 
 
 def connect_read_only(path: Path) -> sqlite3.Connection:
-    """Open a SQLite database in read-only/query-only mode."""
+    """Open and integrity-check a SQLite database in hardened read-only mode."""
 
     if not path.exists():
         raise InputError(f"input database does not exist: {path}")
     if not path.is_file():
         raise InputError(f"input path is not a file: {path}")
 
+    connection: sqlite3.Connection | None = None
     try:
-        connection = sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True)
+        uri = path.resolve().as_uri() + "?mode=ro"
+        connection = sqlite3.connect(uri, uri=True)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA query_only = ON")
-        connection.execute("PRAGMA schema_version").fetchone()
+        connection.execute("PRAGMA trusted_schema = OFF")
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute("PRAGMA busy_timeout = 5000")
+        quick_check = connection.execute("PRAGMA quick_check").fetchone()
+        if quick_check is None or str(quick_check[0]).lower() != "ok":
+            raise InputError("input SQLite database failed integrity check")
         return connection
+    except InputError:
+        if connection is not None:
+            connection.close()
+        raise
     except sqlite3.Error as exc:
+        if connection is not None:
+            connection.close()
         raise InputError(f"input is not a readable SQLite database: {path}") from exc
 
 
@@ -37,7 +51,7 @@ def validate_schema(connection: sqlite3.Connection) -> None:
 
     missing: list[str] = []
     for table, required_columns in REQUIRED_SCHEMA.items():
-        rows = connection.execute(f'PRAGMA table_info("{table}")').fetchall()
+        rows = connection.execute("SELECT name FROM pragma_table_info(?)", (table,)).fetchall()
         if not rows:
             missing.append(f"table {table}")
             continue
