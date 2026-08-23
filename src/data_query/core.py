@@ -173,6 +173,16 @@ def validate_data(connection: sqlite3.Connection) -> None:
         raise InputError("invalid relational data; every order item must reference an existing order")
 
 
+
+def validate_database(input_db: Path) -> None:
+    """Validate an input database without generating report artifacts."""
+    connection = connect_read_only(input_db)
+    try:
+        validate_schema(connection)
+        validate_data(connection)
+    finally:
+        connection.close()
+
 def _money(value: float | int | None) -> float:
     return round(float(value or 0), 2)
 
