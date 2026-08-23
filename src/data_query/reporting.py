@@ -1,87 +1,84 @@
-"""SQL query construction and report aggregation."""
+"""Static SQL queries and report aggregation."""
 
 from __future__ import annotations
 
 import sqlite3
-from typing import Any
 
 from .models import Report, ReportFilters
+
+SUMMARY_SQL = """
+SELECT
+    COUNT(DISTINCT c.id) AS total_customers,
+    COUNT(DISTINCT o.id) AS total_orders,
+    COUNT(DISTINCT CASE WHEN o.status = 'completed' THEN o.id END) AS completed_orders,
+    COALESCE(SUM(CASE WHEN o.status = 'completed' THEN oi.quantity * oi.unit_price ELSE 0 END), 0) AS completed_revenue
+FROM customers c
+LEFT JOIN orders o ON o.customer_id = c.id
+LEFT JOIN order_items oi ON oi.order_id = o.id
+WHERE (:region IS NULL OR c.region = :region)
+  AND (:start_date IS NULL OR o.order_date >= :start_date)
+  AND (:end_date IS NULL OR o.order_date <= :end_date)
+"""
+
+TOP_CUSTOMERS_SQL = """
+SELECT
+    c.id AS customer_id,
+    c.name,
+    c.region,
+    COUNT(DISTINCT o.id) AS orders,
+    COALESCE(SUM(oi.quantity * oi.unit_price), 0) AS revenue
+FROM customers c
+JOIN orders o ON o.customer_id = c.id AND o.status = 'completed'
+JOIN order_items oi ON oi.order_id = o.id
+WHERE (:region IS NULL OR c.region = :region)
+  AND (:start_date IS NULL OR o.order_date >= :start_date)
+  AND (:end_date IS NULL OR o.order_date <= :end_date)
+GROUP BY c.id, c.name, c.region
+ORDER BY revenue DESC, c.id ASC
+LIMIT :top_limit
+"""
+
+MONTHLY_REVENUE_SQL = """
+SELECT
+    substr(o.order_date, 1, 7) AS month,
+    COUNT(DISTINCT o.id) AS orders,
+    COALESCE(SUM(oi.quantity * oi.unit_price), 0) AS revenue
+FROM orders o
+JOIN customers c ON c.id = o.customer_id
+JOIN order_items oi ON oi.order_id = o.id
+WHERE o.status = 'completed'
+  AND (:region IS NULL OR c.region = :region)
+  AND (:start_date IS NULL OR o.order_date >= :start_date)
+  AND (:end_date IS NULL OR o.order_date <= :end_date)
+GROUP BY substr(o.order_date, 1, 7)
+ORDER BY month ASC
+"""
 
 
 def _money(value: float | int | None) -> float:
     return round(float(value or 0), 2)
 
 
-def _scope(filters: ReportFilters, *, customer_alias: str, order_alias: str) -> tuple[str, dict[str, Any]]:
-    clauses: list[str] = []
-    params: dict[str, Any] = {}
-    if filters.region is not None:
-        clauses.append(f"{customer_alias}.region = :region")
-        params["region"] = filters.region
-    if filters.start_date is not None:
-        clauses.append(f"{order_alias}.order_date >= :start_date")
-        params["start_date"] = filters.start_date.isoformat()
-    if filters.end_date is not None:
-        clauses.append(f"{order_alias}.order_date <= :end_date")
-        params["end_date"] = filters.end_date.isoformat()
-    return (" AND ".join(clauses) if clauses else "1 = 1", params)
+def _scope_params(filters: ReportFilters) -> dict[str, str | None]:
+    return {
+        "region": filters.region,
+        "start_date": filters.start_date.isoformat() if filters.start_date else None,
+        "end_date": filters.end_date.isoformat() if filters.end_date else None,
+    }
 
 
 def build_report(connection: sqlite3.Connection, filters: ReportFilters | None = None) -> Report:
     """Build deterministic aggregate data from a validated database."""
 
     filters = filters or ReportFilters()
-    scope, params = _scope(filters, customer_alias="c", order_alias="o")
+    params = _scope_params(filters)
 
-    summary_row = connection.execute(
-        f"""
-        SELECT
-            COUNT(DISTINCT c.id) AS total_customers,
-            COUNT(DISTINCT o.id) AS total_orders,
-            COUNT(DISTINCT CASE WHEN o.status = 'completed' THEN o.id END) AS completed_orders,
-            COALESCE(SUM(CASE WHEN o.status = 'completed' THEN oi.quantity * oi.unit_price ELSE 0 END), 0) AS completed_revenue
-        FROM customers c
-        LEFT JOIN orders o ON o.customer_id = c.id
-        LEFT JOIN order_items oi ON oi.order_id = o.id
-        WHERE {scope}
-        """,
-        params,
-    ).fetchone()
-
+    summary_row = connection.execute(SUMMARY_SQL, params).fetchone()
     top_customer_rows = connection.execute(
-        f"""
-        SELECT
-            c.id AS customer_id,
-            c.name,
-            c.region,
-            COUNT(DISTINCT o.id) AS orders,
-            COALESCE(SUM(oi.quantity * oi.unit_price), 0) AS revenue
-        FROM customers c
-        JOIN orders o ON o.customer_id = c.id AND o.status = 'completed'
-        JOIN order_items oi ON oi.order_id = o.id
-        WHERE {scope}
-        GROUP BY c.id, c.name, c.region
-        ORDER BY revenue DESC, c.id ASC
-        LIMIT :top_limit
-        """,
+        TOP_CUSTOMERS_SQL,
         {**params, "top_limit": filters.top_limit},
     ).fetchall()
-
-    monthly_rows = connection.execute(
-        f"""
-        SELECT
-            substr(o.order_date, 1, 7) AS month,
-            COUNT(DISTINCT o.id) AS orders,
-            COALESCE(SUM(oi.quantity * oi.unit_price), 0) AS revenue
-        FROM orders o
-        JOIN customers c ON c.id = o.customer_id
-        JOIN order_items oi ON oi.order_id = o.id
-        WHERE o.status = 'completed' AND {scope}
-        GROUP BY substr(o.order_date, 1, 7)
-        ORDER BY month ASC
-        """,
-        params,
-    ).fetchall()
+    monthly_rows = connection.execute(MONTHLY_REVENUE_SQL, params).fetchall()
 
     return {
         "schema_version": 2,
