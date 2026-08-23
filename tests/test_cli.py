@@ -32,3 +32,9 @@ def test_non_sqlite_input_is_rejected(tmp_path: Path) -> None:
     result = run_cli("--input", source, "--output", tmp_path / "report.json")
     assert result.returncode == 2
     assert "not a readable SQLite database" in result.stderr
+
+
+def test_invalid_date_is_rejected_by_argument_parser(tmp_path: Path) -> None:
+    result = run_cli("--input", tmp_path / "x.db", "--start-date", "02/01/2026")
+    assert result.returncode == 2
+    assert "expected YYYY-MM-DD" in result.stderr
