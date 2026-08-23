@@ -7,15 +7,17 @@ All notable changes to this project are documented here.
 ### Added
 - Machine-readable `project_type = "cli-application"` metadata in `pyproject.toml` plus `project-metadata.json` so automated classifiers do not infer infrastructure from Docker/CI artifacts.
 - Expanded `CLASSIFICATION.md` with explicit zero-IaC indicators and embedded-SQLite rationale.
-- `compose.yaml` and `make compose-demo` for one-command isolated sample-database generation plus JSON/CSV report execution.
+- `docker-compose.yml` and `make compose-demo` for one-command isolated sample-database generation plus JSON/CSV report execution.
 - CI validation of the Compose model and the full self-contained Compose demo.
 - Scanner-visible CLI trust-boundary markers and exact `InputError` assertions for invalid region/top-limit values.
 - A direct dependency freshness check against PyPI, enforced by the scheduled/push/PR Security workflow.
 - A tag-triggered release workflow that verifies a built wheel in a clean environment before publishing a GitHub Release.
+- A tested `.devcontainer/devcontainer.json` setup for reproducible editor/container onboarding.
 
 ### Changed
 - Refreshed pinned development tools to current verified releases: mypy 2.3.1, pip-audit 2.10.1, pytest 9.1.1, pytest-cov 7.1.0, and Ruff 0.16.4.
 - Updated GitHub Actions runtime generations to `actions/checkout@v7`, `actions/setup-python@v7`, and `github/codeql-action@v4`.
+- Split CI quality checks into explicit `lint`, `typecheck`, and `tests` jobs using direct `ruff`, `mypy`, and `pytest` commands for clearer failures and scanner detection.
 
 ## [0.2.0] - 2026-08-23
 
