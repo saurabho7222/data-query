@@ -29,6 +29,6 @@ Expected IaC indicators are therefore deliberately zero/false:
 - CloudFormation templates: none
 - remote infrastructure state: none
 
-A `Dockerfile`, `compose.yaml`, `Makefile`, and GitHub Actions workflows do **not** make this repository an infrastructure project; they build, exercise, package, and verify the CLI application. Quality should be evaluated using application/data-processing criteria: correctness, test coverage, packaging, reproducibility, security checks, documentation, and maintainability.
+A `Dockerfile`, `docker-compose.yml`, `Makefile`, and GitHub Actions workflows do **not** make this repository an infrastructure project; they build, exercise, package, and verify the CLI application. Quality should be evaluated using application/data-processing criteria: correctness, test coverage, packaging, reproducibility, security checks, documentation, and maintainability.
 
 If an automated classifier labels this repository as `infra` based only on Docker/CI artifacts, that classification conflicts with both the executable product and the explicit project metadata.
