@@ -19,5 +19,8 @@ node_modules/
 # Secrets
 .env
 
+# Local generated data
+.local/
+
 # Build artifacts
 dist.tar.gz
