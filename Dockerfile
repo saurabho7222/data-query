@@ -10,8 +10,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml README.md project-metadata.json docker-compose.yml ./
+COPY pyproject.toml uv.lock README.md project-metadata.json docker-compose.yml ./
 COPY .devcontainer ./.devcontainer
+COPY .github/workflows/release.yml ./.github/workflows/release.yml
 COPY src ./src
 RUN python3 -m pip install --break-system-packages --no-cache-dir .
 
