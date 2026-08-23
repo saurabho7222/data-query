@@ -14,7 +14,7 @@ lint:
 	python3 -m ruff check .
 
 typecheck:
-	python3 -m mypy src/data_query task/solution task/examples
+	python3 -m mypy src/data_query examples
 
 quality: lint typecheck coverage
 
@@ -25,4 +25,4 @@ docker-build:
 	docker build -t data-query .
 
 docker-test: docker-build
-	docker run --rm data-query sh task/tests/test.sh
+	docker run --rm data-query python3 -m pytest tests -v

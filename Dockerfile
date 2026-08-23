@@ -2,20 +2,22 @@ FROM public.ecr.aws/docker/library/ubuntu:24.04@sha256:0d39fcc8335d6d74d5502f6df
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/src
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY requirements-dev.txt ./
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 python3-pip \
-    && python3 -m pip install --break-system-packages --no-cache-dir -r requirements-dev.txt \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml ./
+COPY pyproject.toml README.md ./
 COPY src ./src
-COPY task ./task
+RUN python3 -m pip install --break-system-packages --no-cache-dir .
+
+COPY requirements-dev.txt ./
+RUN python3 -m pip install --break-system-packages --no-cache-dir -r requirements-dev.txt
+
+COPY examples ./examples
 COPY tests ./tests
 
-CMD ["python3", "-m", "data_query", "--help"]
+CMD ["data-query", "--help"]

@@ -14,9 +14,11 @@ A typed Python data-utility CLI that validates a SQLite sales database and produ
 - top customers by completed-order revenue;
 - monthly completed revenue;
 - optional customer-region and inclusive date-range filters;
-- configurable top-customer limit;
+- configurable top-customer limit with explicit input validation;
 - deterministic JSON plus optional customer/monthly CSV exports;
-- atomic output writes so failed runs do not leave partial reports;
+- atomic output writes and path-collision protection;
+- validate-only database health checks that write no artifacts;
+- human-readable or structured JSON logging;
 - conventional `src/` package and root `tests/` suite;
 - coverage, lint, type-check, dependency-audit, secret-scan, Docker, and CI gates.
 
@@ -40,14 +42,14 @@ python -m pip install -r requirements-dev.txt
 make quality
 ```
 
-`make quality` runs linting, static type checking, and the coverage-gated test suite. The same checks run in GitHub Actions on every push and pull request.
+`make quality` runs linting, strict static type checking, and the coverage-gated test suite. The same checks run in GitHub Actions on every push and pull request.
 
 ## Run the CLI
 
 Create a sample database:
 
 ```bash
-python task/examples/create_sample_db.py .local/input.db
+python examples/create_sample_db.py .local/input.db
 ```
 
 Generate the default JSON report:
@@ -78,10 +80,20 @@ data-query \
   --monthly-csv .local/monthly.csv
 ```
 
-The compatibility wrapper remains available:
+Validate the database without writing report files:
 
 ```bash
-INPUT_DB=.local/input.db OUTPUT_JSON=.local/report.json sh task/solution/solve.sh
+data-query --input .local/input.db --validate-only --log-level INFO
+```
+
+Emit machine-readable logs for automation:
+
+```bash
+data-query \
+  --input .local/input.db \
+  --output .local/report.json \
+  --log-level INFO \
+  --log-format json
 ```
 
 ## Input contract
@@ -94,7 +106,9 @@ orders(id, customer_id, order_date, status)
 order_items(order_id, product, quantity, unit_price)
 ```
 
-Validation rejects missing tables/columns, invalid `YYYY-MM-DD` order dates, negative/non-numeric quantity or price values, orders without customers, and order items without orders. Only `orders.status = 'completed'` contributes to revenue.
+Validation rejects missing tables/columns, invalid `YYYY-MM-DD` order dates, negative/non-numeric quantity or price values, orders without customers, and order items without orders. CLI filter values are validated before query execution. Only `orders.status = 'completed'` contributes to revenue.
+
+Output paths are normalized before execution. A report or CSV export cannot overwrite the input database, and two output options cannot target the same file.
 
 ## Tests and quality gates
 
@@ -107,7 +121,7 @@ make quality    # lint + typecheck + coverage
 make security   # dependency audit
 ```
 
-The test suite is intentionally under the conventional root `tests/` directory so standard Python tooling and repository analyzers can discover it without custom knowledge of the compatibility `task/` layout.
+The test suite lives under the conventional root `tests/` directory so standard Python tooling and repository analyzers can discover it without project-specific knowledge.
 
 ## Docker
 
@@ -115,18 +129,18 @@ Build and test the same environment CI uses:
 
 ```bash
 docker build -t data-query .
-docker run --rm data-query sh task/tests/test.sh
+docker run --rm data-query python3 -m pytest tests -v
 ```
 
-Run the CLI with mounted SQLite data:
+Run the installed CLI with mounted SQLite data:
 
 ```bash
 mkdir -p .local
-python task/examples/create_sample_db.py .local/input.db
+python examples/create_sample_db.py .local/input.db
 docker run --rm \
   -v "$PWD/.local:/data" \
   data-query \
-  python3 -m data_query --input /data/input.db --output /data/output.json
+  data-query --input /data/input.db --output /data/output.json
 ```
 
 SQLite is embedded, so no database server or sibling service is required; a Compose stack would add complexity without improving reproducibility.
@@ -135,10 +149,14 @@ SQLite is embedded, so no database server or sibling service is required; a Comp
 
 ```text
 src/data_query/                 application package and CLI
+src/data_query/models.py       typed public configuration/report models
+src/data_query/validation.py   SQLite schema and row-integrity checks
+src/data_query/reporting.py    SQL aggregation logic
+src/data_query/writers.py      atomic JSON/CSV output writers
+src/data_query/path_safety.py  output collision protection
+src/data_query/logging_utils.py structured logging support
+examples/                       runnable sample database generator
 tests/                          discoverable behavioral/unit tests
-task/solution/                  compatibility entry points
-task/examples/                  sample database generator
-task/tests/test.sh              compatibility test command
 .github/workflows/ci.yml        lint, type, coverage, Docker gates
 .github/workflows/security.yml  dependency and secret scanning
 .github/dependabot.yml          dependency update automation

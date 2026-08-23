@@ -15,7 +15,7 @@ Run all checks before opening a pull request:
 
 ```bash
 python -m ruff check .
-python -m mypy src/data_query task/solution task/examples
+python -m mypy src/data_query examples
 PYTHONPATH=src python -m pytest --cov=data_query --cov-fail-under=90
 ```
 

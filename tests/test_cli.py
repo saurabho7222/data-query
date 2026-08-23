@@ -2,16 +2,27 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SOLVER = REPO_ROOT / "task" / "solution" / "solve.py"
 
 
 def run_cli(*args: object) -> subprocess.CompletedProcess[str]:
-    return subprocess.run([sys.executable, str(SOLVER), *(str(value) for value in args)], cwd=REPO_ROOT, capture_output=True, text=True, check=False)
+    env = os.environ.copy()
+    src_path = str(REPO_ROOT / "src")
+    current_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = src_path if not current_pythonpath else os.pathsep.join([src_path, current_pythonpath])
+    return subprocess.run(
+        [sys.executable, "-m", "data_query", *(str(value) for value in args)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
 
 
 def test_missing_input_fails_without_output(tmp_path: Path) -> None:

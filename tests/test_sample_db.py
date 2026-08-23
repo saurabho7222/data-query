@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-GENERATOR = REPO_ROOT / "task" / "examples" / "create_sample_db.py"
+GENERATOR = REPO_ROOT / "examples" / "create_sample_db.py"
 
 
 def test_sample_generator_creates_expected_schema_and_rows(tmp_path: Path) -> None:

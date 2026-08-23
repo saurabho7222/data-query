@@ -23,7 +23,7 @@ jobs:
       - name: Lint
         run: python -m ruff check .
       - name: Type check
-        run: python -m mypy src/data_query task/solution task/examples
+        run: python -m mypy src/data_query examples
 
   test:
     runs-on: ubuntu-latest
@@ -43,8 +43,8 @@ jobs:
           python -m pip install -r requirements-dev.txt
       - name: Run coverage-gated tests
         run: python -m pytest --cov=data_query --cov-report=term-missing --cov-report=xml --cov-fail-under=90
-      - name: Verify compatibility test entry point
-        run: sh task/tests/test.sh
+      - name: Smoke-test installed CLI
+        run: python -m data_query --help
 
   docker:
     runs-on: ubuntu-latest
@@ -53,4 +53,4 @@ jobs:
       - name: Build image
         run: docker build -t data-query .
       - name: Run tests inside image
-        run: docker run --rm data-query sh task/tests/test.sh
+        run: docker run --rm data-query python3 -m pytest tests -v
