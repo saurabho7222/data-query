@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 import sqlite3
 from dataclasses import dataclass
@@ -72,6 +73,15 @@ class ReportFilters:
             raise InputError("start date must not be after end date")
 
 
+@dataclass(frozen=True, slots=True)
+class ReportOptions:
+    """Output configuration for a report run."""
+
+    output_json: Path
+    customers_csv: Path | None = None
+    monthly_csv: Path | None = None
+
+
 def connect_read_only(path: Path) -> sqlite3.Connection:
     """Open a SQLite database in read-only/query-only mode."""
     if not path.exists():
@@ -104,6 +114,61 @@ def validate_schema(connection: sqlite3.Connection) -> None:
 
     if missing:
         raise InputError("invalid database schema; missing " + "; ".join(missing))
+
+
+def validate_data(connection: sqlite3.Connection) -> None:
+    """Reject malformed rows that would make monetary/date aggregates unreliable."""
+    invalid_item = connection.execute(
+        """
+        SELECT rowid, quantity, unit_price
+        FROM order_items
+        WHERE typeof(quantity) NOT IN ('integer', 'real')
+           OR typeof(unit_price) NOT IN ('integer', 'real')
+           OR quantity < 0
+           OR unit_price < 0
+        LIMIT 1
+        """
+    ).fetchone()
+    if invalid_item is not None:
+        raise InputError("invalid order_items data; quantity and unit_price must be non-negative numbers")
+
+    invalid_date = connection.execute(
+        """
+        SELECT id, order_date
+        FROM orders
+        WHERE order_date IS NULL
+           OR length(order_date) != 10
+           OR date(order_date) IS NULL
+           OR strftime('%Y-%m-%d', order_date) != order_date
+        LIMIT 1
+        """
+    ).fetchone()
+    if invalid_date is not None:
+        raise InputError("invalid orders data; order_date must use YYYY-MM-DD")
+
+    orphan_order = connection.execute(
+        """
+        SELECT o.id
+        FROM orders o
+        LEFT JOIN customers c ON c.id = o.customer_id
+        WHERE c.id IS NULL
+        LIMIT 1
+        """
+    ).fetchone()
+    if orphan_order is not None:
+        raise InputError("invalid relational data; every order must reference an existing customer")
+
+    orphan_item = connection.execute(
+        """
+        SELECT oi.rowid
+        FROM order_items oi
+        LEFT JOIN orders o ON o.id = oi.order_id
+        WHERE o.id IS NULL
+        LIMIT 1
+        """
+    ).fetchone()
+    if orphan_item is not None:
+        raise InputError("invalid relational data; every order item must reference an existing order")
 
 
 def _money(value: float | int | None) -> float:
@@ -218,13 +283,41 @@ def _atomic_text_write(path: Path, text: str) -> None:
     temporary.replace(path)
 
 
-def write_report(input_db: Path, output_json: Path, filters: ReportFilters | None = None) -> Report:
-    """Validate input, build a report, and atomically write JSON."""
+def _write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, object]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    with temporary.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    temporary.replace(path)
+
+
+def write_report(
+    input_db: Path,
+    options: ReportOptions,
+    filters: ReportFilters | None = None,
+) -> Report:
+    """Validate input, build a report, and atomically write requested outputs."""
     connection = connect_read_only(input_db)
     try:
         validate_schema(connection)
+        validate_data(connection)
         report = build_report(connection, filters)
     finally:
         connection.close()
-    _atomic_text_write(output_json, json.dumps(report, indent=2, sort_keys=True) + "\n")
+
+    _atomic_text_write(options.output_json, json.dumps(report, indent=2, sort_keys=True) + "\n")
+    if options.customers_csv is not None:
+        _write_csv(
+            options.customers_csv,
+            ["customer_id", "name", "region", "orders", "revenue"],
+            report["top_customers"],
+        )
+    if options.monthly_csv is not None:
+        _write_csv(
+            options.monthly_csv,
+            ["month", "orders", "revenue"],
+            report["monthly_revenue"],
+        )
     return report

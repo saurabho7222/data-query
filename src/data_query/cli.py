@@ -8,7 +8,7 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
-from .core import InputError, ReportFilters, write_report
+from .core import InputError, ReportFilters, ReportOptions, write_report
 
 LOGGER = logging.getLogger("data_query")
 
@@ -28,6 +28,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--start-date", type=_iso_date, help="include orders on/after YYYY-MM-DD")
     parser.add_argument("--end-date", type=_iso_date, help="include orders on/before YYYY-MM-DD")
     parser.add_argument("--top-limit", type=int, default=5, help="number of top customers to include (1-100)")
+    parser.add_argument("--customers-csv", type=Path, help="optional CSV export of top customers")
+    parser.add_argument("--monthly-csv", type=Path, help="optional CSV export of monthly revenue")
     parser.add_argument("--verbose", action="store_true", help="enable informational logging")
     return parser
 
@@ -44,7 +46,12 @@ def main(argv: list[str] | None = None) -> int:
             end_date=args.end_date,
             top_limit=args.top_limit,
         )
-        write_report(args.input, args.output, filters)
+        options = ReportOptions(
+            output_json=args.output,
+            customers_csv=args.customers_csv,
+            monthly_csv=args.monthly_csv,
+        )
+        write_report(args.input, options, filters)
     except InputError as exc:
         LOGGER.error("%s", exc)
         return 2
