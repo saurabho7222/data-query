@@ -1,0 +1,12 @@
+{
+  "name": "data-query",
+  "project_type": "cli-application",
+  "category": "application",
+  "domain": "data-processing",
+  "language": "python",
+  "interface": "command-line",
+  "database": "embedded-sqlite",
+  "infrastructure_as_code": false,
+  "service": false,
+  "self_contained": true
+}

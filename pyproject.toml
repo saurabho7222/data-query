@@ -5,13 +5,41 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "data-query"
 version = "0.2.0"
-description = "A typed SQLite analytics CLI with deterministic JSON and CSV reporting."
+description = "A typed SQLite analytics CLI application with deterministic JSON and CSV reporting."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
+keywords = ["cli", "sqlite", "analytics", "data-processing", "reporting"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Database",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/saurabho7222/data-query"
+Repository = "https://github.com/saurabho7222/data-query"
+Issues = "https://github.com/saurabho7222/data-query/issues"
+Documentation = "https://github.com/saurabho7222/data-query#readme"
 
 [project.scripts]
 data-query = "data_query.cli:main"
+
+[tool.data-query]
+project_type = "cli-application"
+category = "application"
+domain = "data-processing"
+runtime = "python"
+database = "embedded-sqlite"
+infrastructure_as_code = false
+service = false
+self_contained = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
