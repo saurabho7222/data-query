@@ -22,14 +22,16 @@ A typed Python data-processing CLI application that validates a SQLite sales dat
 - human-readable or structured JSON logging;
 - conventional `src/` package and root `tests/` suite;
 - one-command self-contained Docker Compose demo;
+- tested Dev Container onboarding for reproducible editor environments;
 - wheel build/install verification in a clean virtual environment;
-- coverage, lint, strict type-check, dependency-audit, dependency-freshness, secret-scan, CodeQL, Docker, and CI gates.
+- coverage, explicit lint/type/test jobs, dependency-audit, dependency-freshness, secret-scan, CodeQL, Docker, and CI gates.
 
 ## Requirements
 
 - Python 3.11+
 - `pip`
 - Docker with the Compose plugin (optional; used for isolated verification)
+- A Dev Container compatible editor (optional)
 
 The application runtime uses only the Python standard library. `uv.lock` records the dependency-free runtime package graph in a standard lockfile. Development and verification tools are exactly pinned in `requirements-dev.txt`, checked against PyPI by `scripts/check_dependency_freshness.py`, and kept current by Dependabot.
 
@@ -45,7 +47,13 @@ python -m pip install -r requirements-dev.txt
 make quality
 ```
 
-`make quality` runs linting, strict static type checking, and the coverage-gated test suite. The same checks run in GitHub Actions on every push and pull request.
+`make quality` runs linting, strict static type checking, and the coverage-gated test suite. GitHub Actions exposes these as explicit `lint`, `typecheck`, and matrixed `tests` jobs so both humans and repository scanners can identify the quality gates directly.
+
+## Dev Container
+
+The repository includes `.devcontainer/devcontainer.json` for reproducible development without manually configuring Python or quality tools. Open the repository in a Dev Container compatible editor and rebuild/open it in the container. The container uses the repository Dockerfile, mounts the checkout as `/workspaces/data-query`, installs the package and pinned development tools, and runs the coverage-gated test suite in `postCreateCommand`.
+
+The Dev Container configuration itself is parsed and asserted by `tests/test_repository_contract.py`, so onboarding configuration drift fails the normal test suite.
 
 ## One-command isolated run
 
@@ -160,27 +168,28 @@ SQLite is embedded, so Compose does not provision external infrastructure. It ex
 ## Project structure
 
 ```text
-src/data_query/                   application package and CLI
-src/data_query/models.py          typed public configuration/report models
-src/data_query/validation.py      SQLite schema and row-integrity checks
-src/data_query/reporting.py       SQL aggregation logic
-src/data_query/writers.py         atomic JSON/CSV output writers
-src/data_query/path_safety.py     output collision protection
-src/data_query/logging_utils.py   structured logging support
+src/data_query/                    application package and CLI
+src/data_query/models.py           typed public configuration/report models
+src/data_query/validation.py       SQLite schema and row-integrity checks
+src/data_query/reporting.py        SQL aggregation logic
+src/data_query/writers.py          atomic JSON/CSV output writers
+src/data_query/path_safety.py      output collision protection
+src/data_query/logging_utils.py    structured logging support
 src/data_query/input_validation.py explicit CLI trust-boundary validation
-examples/                         runnable sample database generator
-scripts/                          maintenance/freshness checks
-tests/                            discoverable behavioral/unit tests
-docker-compose.yml                one-command isolated end-to-end execution
-project-metadata.json             machine-readable application classification
-.github/workflows/ci.yml          lint, type, coverage, package, Docker/Compose gates
-.github/workflows/security.yml    dependency audit/freshness and secret scanning
-.github/workflows/codeql.yml      CodeQL static analysis
-.github/workflows/release.yml     verified tag-driven wheel release
-.github/dependabot.yml            pip + GitHub Actions update automation
-pyproject.toml                    package metadata, project type, quality config
-uv.lock                           runtime dependency lock
-requirements-dev.txt              exact development/security tool pins
+examples/                          runnable sample database generator
+scripts/                           maintenance/freshness checks
+tests/                             discoverable behavioral/unit tests
+.devcontainer/devcontainer.json    reproducible editor/container onboarding
+docker-compose.yml                 one-command isolated end-to-end execution
+project-metadata.json              machine-readable application classification
+.github/workflows/ci.yml           explicit lint/typecheck/tests + package/Docker gates
+.github/workflows/security.yml     dependency audit/freshness and secret scanning
+.github/workflows/codeql.yml       CodeQL static analysis
+.github/workflows/release.yml      verified tag-driven wheel release
+.github/dependabot.yml             pip + GitHub Actions update automation
+pyproject.toml                     package metadata, project type, quality config
+uv.lock                            runtime dependency lock
+requirements-dev.txt               exact development/security tool pins
 ```
 
 ## Development
