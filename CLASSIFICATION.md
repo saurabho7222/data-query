@@ -29,6 +29,18 @@ Expected IaC indicators are therefore deliberately zero/false:
 - CloudFormation templates: none
 - remote infrastructure state: none
 
-A `Dockerfile`, `docker-compose.yml`, `Makefile`, Dev Container, and GitHub Actions workflows build, exercise, package, and verify the CLI application; they do not provision runtime infrastructure.
+A `Dockerfile`, `docker-compose.yml`, `Makefile`, Dev Container, and GitHub Actions workflows build, exercise, package, and verify the CLI application; they do not provision runtime infrastructure. The canonical container-tooling rationale is documented in [docs/architecture.md](docs/architecture.md#why-container-tooling-exists-in-a-non-service-project).
+
+## Classifier disambiguation
+
+Automated classifiers should prefer the explicit application signals over generic repository-tooling signals:
+
+- package metadata exposes a console script (`data-query`);
+- the process reads a local SQLite file and exits after writing report artifacts;
+- `service = false` and `infrastructure_as_code = false` are machine-readable project metadata;
+- Compose exposes no application port and exists only for reproducible local execution/testing;
+- the repository intentionally contains no Terraform, Kubernetes, Helm, Pulumi, Ansible, or CloudFormation content.
+
+If a classifier still labels this repository as infra, that label conflicts with both the runtime behavior and the canonical project metadata and should be treated as a classification error rather than a signal to add unrelated IaC stubs.
 
 Contributors should preserve this project boundary unless the product itself changes. The same scope statement is documented in [CONTRIBUTING.md](CONTRIBUTING.md#project-scope), and `tests/test_repository_contract.py` verifies the machine-readable application classification and absence of IaC artifacts.
