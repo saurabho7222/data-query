@@ -23,8 +23,14 @@ def test_generates_expected_report(sales_db: Path, tmp_path: Path) -> None:
     output = tmp_path / "report.json"
     report = write_report(sales_db, ReportOptions(output))
 
-    assert report["schema_version"] == 2
-    assert report["filters"] == {"region": None, "start_date": None, "end_date": None, "top_limit": 5}
+    assert report["schema_version"] == 3
+    assert report["filters"] == {
+        "region": None,
+        "start_date": None,
+        "end_date": None,
+        "top_limit": 5,
+        "cohort_periods": 6,
+    }
     assert report["summary"] == {
         "total_customers": 3,
         "total_orders": 5,
@@ -90,6 +96,7 @@ def test_empty_database_returns_zero_summary(tmp_path: Path) -> None:
     }
     assert report["top_customers"] == []
     assert report["monthly_revenue"] == []
+    assert report["cohort_retention"] == []
 
 
 def test_rejects_negative_money_inputs(sales_db: Path) -> None:

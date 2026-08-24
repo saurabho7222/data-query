@@ -11,6 +11,7 @@ from .schemas import ReportFilters as ReportFilters
 
 __all__ = [
     "AppliedFilters",
+    "CohortRetentionRow",
     "CustomerRow",
     "InputError",
     "MonthlyRow",
@@ -42,11 +43,20 @@ class MonthlyRow(TypedDict):
     revenue: float
 
 
+class CohortRetentionRow(TypedDict):
+    cohort_month: str
+    period: int
+    cohort_size: int
+    retained_customers: int
+    retention_rate: float
+
+
 class AppliedFilters(TypedDict):
     region: str | None
     start_date: str | None
     end_date: str | None
     top_limit: int
+    cohort_periods: int
 
 
 class Report(TypedDict):
@@ -55,6 +65,7 @@ class Report(TypedDict):
     summary: Summary
     top_customers: list[CustomerRow]
     monthly_revenue: list[MonthlyRow]
+    cohort_retention: list[CohortRetentionRow]
 
 
 @dataclass(frozen=True, slots=True)

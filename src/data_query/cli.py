@@ -9,7 +9,7 @@ from datetime import date
 from pathlib import Path
 
 from .core import InputError, ReportFilters, ReportOptions, write_report
-from .input_validation import validate_iso_date, validate_region_name, validate_top_limit
+from .input_validation import validate_cohort_periods, validate_iso_date, validate_region_name, validate_top_limit
 from .logging_utils import configure_logger
 from .validation_service import validate_database
 
@@ -39,14 +39,27 @@ def _top_limit(value: str) -> int:
         raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
+def _cohort_periods(value: str) -> int:
+    try:
+        return validate_cohort_periods(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Generate a deterministic analytics report from SQLite sales data.")
+    parser = argparse.ArgumentParser(description="Generate deterministic advanced analytics from SQLite sales data.")
     parser.add_argument("--input", type=Path, default=Path("/app/input.db"), help="SQLite input database")
     parser.add_argument("--output", type=Path, default=Path("/app/output.json"), help="JSON report path")
     parser.add_argument("--region", type=_region, help="restrict report data to one customer region")
     parser.add_argument("--start-date", type=_iso_date, help="include orders on/after YYYY-MM-DD")
     parser.add_argument("--end-date", type=_iso_date, help="include orders on/before YYYY-MM-DD")
     parser.add_argument("--top-limit", type=_top_limit, default=5, help="number of top customers to include (1-100)")
+    parser.add_argument(
+        "--cohort-periods",
+        type=_cohort_periods,
+        default=6,
+        help="number of monthly retention periods to include (1-24)",
+    )
     parser.add_argument("--customers-csv", type=Path, help="optional CSV export of top customers")
     parser.add_argument("--monthly-csv", type=Path, help="optional CSV export of monthly revenue")
     parser.add_argument("--validate-only", action="store_true", help="validate the database without writing report files")
@@ -76,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
             start_date=args.start_date,
             end_date=args.end_date,
             top_limit=args.top_limit,
+            cohort_periods=args.cohort_periods,
         )
         options = ReportOptions(
             output_json=args.output,
