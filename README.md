@@ -4,21 +4,24 @@
 [![Security](https://github.com/saurabho7222/data-query/actions/workflows/security.yml/badge.svg)](https://github.com/saurabho7222/data-query/actions/workflows/security.yml)
 [![CodeQL](https://github.com/saurabho7222/data-query/actions/workflows/codeql.yml/badge.svg)](https://github.com/saurabho7222/data-query/actions/workflows/codeql.yml)
 
-A typed Python **CLI application** for validating a SQLite sales database and producing deterministic JSON analytics with optional CSV exports.
+A typed Python **CLI application** for validating a SQLite sales database and producing deterministic JSON analytics with optional CSV exports, cohort retention, and period-over-period comparisons.
 
 > **Project type:** `cli-application`. This project does not provision infrastructure. The canonical metadata is in `[tool.data-query]` in `pyproject.toml` and `project-metadata.json`; see [CLASSIFICATION.md](CLASSIFICATION.md).
 
 ## Features
 
-- declarative Pydantic schema for region, date, date-range, and top-limit validation;
+- declarative Pydantic schema for region, date, date-range, top-limit, cohort-horizon, and comparison-window validation;
 - hardened read-only SQLite access with integrity checks and defensive PRAGMAs;
 - static parameterized SQL for analytics queries;
 - database schema and row-integrity validation;
 - customer/order/revenue summary, top-customer, and monthly-revenue analytics;
+- monthly customer-cohort retention with a bounded 1..24 period horizon;
+- equal-length previous-period comparison for completed orders and revenue;
 - optional region/date filters and CSV exports;
 - atomic output writes and output-path collision protection;
 - validate-only mode and structured JSON logging;
-- reproducible Docker Compose and Dev Container workflows;
+- formal threat model covering untrusted CLI/database/path inputs and dependency supply-chain risks;
+- reproducible Docker Compose and Dev Container workflows used only for local execution and verification;
 - CI gates for dependency lock consistency, linting, strict typing, tests/coverage, packaging, Docker/Compose, dependency audits, secret scanning, and CodeQL.
 
 ## Requirements
@@ -53,7 +56,7 @@ python -m pip install -r requirements-dev.txt
 make quality
 ```
 
-See [docs/architecture.md](docs/architecture.md) for the component boundaries, trust boundaries, SQLite safety invariants, failure model, and verification strategy.
+See [docs/architecture.md](docs/architecture.md) for the component boundaries, advanced analytics semantics, trust boundaries, SQLite safety invariants, failure model, container-tooling rationale, and verification strategy. See [THREAT_MODEL.md](THREAT_MODEL.md) for the explicit security model.
 
 ## Dev Container
 
@@ -74,7 +77,7 @@ This builds the image, creates a sample SQLite database, and writes:
 .local/monthly.csv
 ```
 
-The Compose model contains only short-lived application jobs; SQLite is embedded, so no database server, cloud account, or external service is required.
+The Compose model contains only short-lived application jobs; SQLite is embedded, so no database server, cloud account, exposed port, or external service is required. Docker/Compose/Dev Container artifacts are reproducible application test environments, not infrastructure-as-code.
 
 ## Run the CLI
 
@@ -101,6 +104,46 @@ data-query \
   --end-date 2026-02-28 \
   --top-limit 3
 ```
+
+### Cohort retention
+
+Every JSON report includes monthly customer-cohort retention. Cohort identity is the month of a customer's first completed order. Limit the returned month offsets with `--cohort-periods`:
+
+```bash
+data-query \
+  --input .local/input.db \
+  --output .local/cohorts.json \
+  --cohort-periods 12
+```
+
+A retention row contains:
+
+```json
+{
+  "cohort_month": "2026-01",
+  "period": 1,
+  "cohort_size": 42,
+  "retained_customers": 17,
+  "retention_rate": 40.48
+}
+```
+
+Date filters restrict observed cohort activity but do not rewrite the customer's original cohort month.
+
+### Equal-length period comparison
+
+Use `--compare-period` with a complete date window to compare the requested range with the immediately preceding range containing the same number of inclusive calendar days:
+
+```bash
+data-query \
+  --input .local/input.db \
+  --output .local/feb-comparison.json \
+  --start-date 2026-02-01 \
+  --end-date 2026-02-28 \
+  --compare-period
+```
+
+The report includes current and previous completed-order/revenue metrics plus percentage changes. When a previous baseline is zero, the corresponding percentage change is `null` rather than an infinite value.
 
 Write CSV views too:
 
@@ -142,6 +185,10 @@ order_items(order_id, product, quantity, unit_price)
 
 Output paths are normalized before execution. Outputs cannot overwrite the input database, and two output options cannot target the same destination.
 
+## Report contract
+
+The JSON report schema is versioned independently inside each document with `schema_version`. Version 3 adds `cohort_retention`, `period_comparison`, and the associated filter metadata while retaining summary, top-customer, and monthly-revenue sections.
+
 ## Quality and security checks
 
 ```bash
@@ -168,12 +215,14 @@ src/data_query/errors.py           application error hierarchy
 src/data_query/schemas.py          declarative input/config validation
 src/data_query/models.py           typed report models and output options
 src/data_query/validation.py       hardened SQLite/schema/data checks
-src/data_query/reporting.py        static parameterized analytics SQL
+src/data_query/reporting.py        static parameterized aggregate/cohort SQL
+src/data_query/comparison.py       equal-length period comparison engine
 src/data_query/writers.py          atomic JSON/CSV writers
 src/data_query/path_safety.py      output collision protection
 src/data_query/logging_utils.py    structured logging
 src/data_query/input_validation.py CLI validation adapters
 docs/architecture.md               architecture and trust-boundary design
+THREAT_MODEL.md                    assets, threats, mitigations, residual risks
 examples/                          sample database generator
 scripts/                           maintenance checks
 tests/                             behavioral/unit/contract tests
