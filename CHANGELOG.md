@@ -6,6 +6,27 @@ All notable changes to this project are documented here.
 
 No unreleased user-visible changes.
 
+## [0.3.0] - 2026-08-24
+
+### Added
+- Monthly customer cohort-retention analytics based on each eligible customer's first completed order.
+- A bounded `--cohort-periods` option (1..24) with declarative schema validation and deterministic retention rows.
+- Opt-in `--compare-period` analytics that compare a complete date window with the immediately preceding equal-length window.
+- Zero-baseline-safe percentage changes: comparison percentages are `null` when a previous metric is zero.
+- A dedicated `comparison.py` analytics engine so period derivation and comparison logic remain separate from aggregate report assembly.
+- A formal `THREAT_MODEL.md` covering assets, attacker capabilities, SQLite/path/SQL/resource-exhaustion threats, mitigations, supply-chain controls, and residual risks.
+- Architecture documentation for cohort semantics, period-comparison invariants, and the non-service purpose of Docker/Compose/Dev Container tooling.
+
+### Changed
+- JSON report schema advanced to version 3 with `cohort_retention`, `period_comparison`, `cohort_periods`, and `compare_period` fields.
+- CLI description and README now document advanced analytics behavior and report contracts.
+- Repository classification guidance now explicitly tells automated classifiers not to infer infrastructure/service status from local verification containers.
+
+### Verification
+- Cohort retention was introduced with a contract-first test commit followed by a separate implementation commit.
+- Period comparison was introduced with a contract-first test commit followed by a separate implementation commit.
+- Python 3.11/3.12 tests, strict mypy, Ruff, package verification, lock verification, Docker/Compose execution, dependency audits, Gitleaks, and CodeQL remain gating checks.
+
 ## [0.2.1] - 2026-08-23
 
 ### Added

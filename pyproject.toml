@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "data-query"
-version = "0.2.1"
-description = "A typed SQLite analytics CLI application with deterministic JSON and CSV reporting."
+version = "0.3.0"
+description = "A typed SQLite analytics CLI application with cohort retention, period comparison, and deterministic reporting."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = ["pydantic==2.13.4"]

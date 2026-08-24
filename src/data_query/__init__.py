@@ -3,4 +3,4 @@
 from .core import InputError, ReportFilters, ReportOptions, build_report, write_report
 
 __all__ = ["InputError", "ReportFilters", "ReportOptions", "build_report", "write_report"]
-__version__ = "0.2.1"
+__version__ = "0.3.0"
