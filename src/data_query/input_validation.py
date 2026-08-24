@@ -24,6 +24,13 @@ def validate_top_limit(value: str) -> int:
     return ReportFilters(top_limit=value).top_limit
 
 
+def validate_cohort_periods(value: str) -> int:
+    """Validate ``--cohort-periods`` through the canonical ReportFilters schema."""
+
+    # validates: CLI --cohort-periods via Pydantic BaseModel/Field schema
+    return ReportFilters(cohort_periods=value).cohort_periods
+
+
 def validate_iso_date(value: str) -> date:
     """Validate an ISO date through the canonical ReportFilters schema."""
 
