@@ -39,6 +39,11 @@ def _validation_message(exc: ValidationError) -> str:
             return "cohort periods must be an integer"
         if kind in {"greater_than_equal", "less_than_equal"}:
             return "cohort periods must be between 1 and 24"
+    if field == "product_limit":
+        if kind in {"int_parsing", "int_type"}:
+            return "product limit must be an integer"
+        if kind in {"greater_than_equal", "less_than_equal"}:
+            return "product limit must be between 1 and 100"
     if field in {"start_date", "end_date"}:
         return "expected YYYY-MM-DD"
     return message
@@ -59,6 +64,7 @@ class ReportFilters(BaseModel):
     end_date: date | None = None
     top_limit: int = Field(default=5, ge=1, le=100)
     cohort_periods: int = Field(default=6, ge=1, le=24)
+    product_limit: int = Field(default=10, ge=1, le=100)
     compare_period: bool = False
 
     @field_validator("region", mode="before")

@@ -17,6 +17,8 @@ __all__ = [
     "MonthlyRow",
     "PeriodComparison",
     "PeriodMetrics",
+    "ProductConcentration",
+    "ProductPerformanceRow",
     "Report",
     "ReportFilters",
     "ReportOptions",
@@ -69,12 +71,29 @@ class PeriodComparison(TypedDict):
     revenue_change_pct: float | None
 
 
+class ProductPerformanceRow(TypedDict):
+    product: str
+    orders: int
+    units: float
+    revenue: float
+    revenue_share_pct: float
+    cumulative_revenue_share_pct: float
+
+
+class ProductConcentration(TypedDict):
+    total_products: int
+    products_to_80_pct: int
+    top_product_share_pct: float
+    products: list[ProductPerformanceRow]
+
+
 class AppliedFilters(TypedDict):
     region: str | None
     start_date: str | None
     end_date: str | None
     top_limit: int
     cohort_periods: int
+    product_limit: int
     compare_period: bool
 
 
@@ -85,6 +104,7 @@ class Report(TypedDict):
     top_customers: list[CustomerRow]
     monthly_revenue: list[MonthlyRow]
     cohort_retention: list[CohortRetentionRow]
+    product_concentration: ProductConcentration
     period_comparison: PeriodComparison | None
 
 
