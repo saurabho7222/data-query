@@ -4,19 +4,20 @@
 [![Security](https://github.com/saurabho7222/data-query/actions/workflows/security.yml/badge.svg)](https://github.com/saurabho7222/data-query/actions/workflows/security.yml)
 [![CodeQL](https://github.com/saurabho7222/data-query/actions/workflows/codeql.yml/badge.svg)](https://github.com/saurabho7222/data-query/actions/workflows/codeql.yml)
 
-A typed Python **CLI application** for validating a SQLite sales database and producing deterministic JSON analytics with optional CSV exports, cohort retention, and period-over-period comparisons.
+A typed Python **CLI application** for validating a SQLite sales database and producing deterministic JSON analytics with optional CSV exports, cohort retention, equal-length period comparisons, and Pareto-style product concentration analysis.
 
 > **Project type:** `cli-application`. This project does not provision infrastructure. The canonical metadata is in `[tool.data-query]` in `pyproject.toml` and `project-metadata.json`; see [CLASSIFICATION.md](CLASSIFICATION.md).
 
 ## Features
 
-- declarative Pydantic schema for region, date, date-range, top-limit, cohort-horizon, and comparison-window validation;
+- declarative Pydantic schema for region, date, date-range, top-limit, cohort-horizon, product-limit, and comparison-window validation;
 - hardened read-only SQLite access with integrity checks and defensive PRAGMAs;
 - static parameterized SQL for analytics queries;
 - database schema and row-integrity validation;
 - customer/order/revenue summary, top-customer, and monthly-revenue analytics;
 - monthly customer-cohort retention with a bounded 1..24 period horizon;
 - equal-length previous-period comparison for completed orders and revenue;
+- ranked product revenue concentration with units, order counts, revenue share, cumulative share, and an 80% Pareto threshold;
 - optional region/date filters and CSV exports;
 - atomic output writes and output-path collision protection;
 - validate-only mode and structured JSON logging;
@@ -33,7 +34,7 @@ A typed Python **CLI application** for validating a SQLite sales database and pr
 
 ### Runtime dependencies
 
-`pydantic==2.13.4` is the single direct runtime dependency. It provides the canonical declarative `ReportFilters` schema and CLI boundary validation. The complete transitive runtime graph is generated in `uv.lock`.
+`pydantic==2.13.4` is the direct runtime dependency. It provides the canonical declarative `ReportFilters` schema and CLI boundary validation. `requirements.txt` mirrors this direct dependency for conventional package scanners, while the complete transitive runtime graph is generated in `uv.lock`.
 
 CI verifies dependency reproducibility with:
 
@@ -56,11 +57,11 @@ python -m pip install -r requirements-dev.txt
 make quality
 ```
 
-See [docs/architecture.md](docs/architecture.md) for the component boundaries, advanced analytics semantics, trust boundaries, SQLite safety invariants, failure model, container-tooling rationale, and verification strategy. See [THREAT_MODEL.md](THREAT_MODEL.md) for the explicit security model.
+See [docs/architecture.md](docs/architecture.md) for component boundaries, advanced analytics semantics, trust boundaries, SQLite safety invariants, failure handling, the container-tooling rationale, and verification strategy. See [THREAT_MODEL.md](THREAT_MODEL.md) for the explicit security model.
 
 ## Dev Container
 
-`.devcontainer/devcontainer.json` provides a reproducible editor/container environment. Its `postCreateCommand` installs the package and pinned development tools and runs the coverage-gated test suite. `tests/test_repository_contract.py` verifies the Dev Container configuration alongside the repository classification contract.
+`.devcontainer/devcontainer.json` provides a reproducible editor/container environment. Its `postCreateCommand` installs the package and pinned development tools and runs the coverage-gated test suite. `tests/test_repository_contract.py` verifies the Dev Container configuration alongside the repository classification and dependency-manifest contracts.
 
 ## One-command isolated run
 
@@ -145,6 +146,34 @@ data-query \
 
 The report includes current and previous completed-order/revenue metrics plus percentage changes. When a previous baseline is zero, the corresponding percentage change is `null` rather than an infinite value.
 
+### Product concentration and Pareto share
+
+Every report also analyzes completed-order revenue by product. The engine ranks products deterministically and calculates units, completed-order count, revenue, each product's revenue share, and cumulative revenue share. `products_to_80_pct` reports how many ranked products are required to reach at least 80% of scoped revenue.
+
+Use `--product-limit` to control how many ranked product rows are emitted without changing the full-population concentration summary:
+
+```bash
+data-query \
+  --input .local/input.db \
+  --output .local/products.json \
+  --product-limit 20
+```
+
+The limit is bounded to `1..100`. Region and date filters apply to product activity exactly as they do to the other scoped aggregates.
+
+A product row looks like:
+
+```json
+{
+  "product": "dock",
+  "orders": 8,
+  "units": 11.0,
+  "revenue": 1320.0,
+  "revenue_share_pct": 37.38,
+  "cumulative_revenue_share_pct": 65.73
+}
+```
+
 Write CSV views too:
 
 ```bash
@@ -187,7 +216,7 @@ Output paths are normalized before execution. Outputs cannot overwrite the input
 
 ## Report contract
 
-The JSON report schema is versioned independently inside each document with `schema_version`. Version 3 adds `cohort_retention`, `period_comparison`, and the associated filter metadata while retaining summary, top-customer, and monthly-revenue sections.
+The JSON report schema is versioned independently inside each document with `schema_version`. Version 4 includes `cohort_retention`, `period_comparison`, `product_concentration`, and the associated bounded filter metadata while retaining summary, top-customer, and monthly-revenue sections.
 
 ## Quality and security checks
 
@@ -215,8 +244,9 @@ src/data_query/errors.py           application error hierarchy
 src/data_query/schemas.py          declarative input/config validation
 src/data_query/models.py           typed report models and output options
 src/data_query/validation.py       hardened SQLite/schema/data checks
-src/data_query/reporting.py        static parameterized aggregate/cohort SQL
+src/data_query/reporting.py        aggregate/cohort report orchestration
 src/data_query/comparison.py       equal-length period comparison engine
+src/data_query/products.py         product concentration and Pareto analytics
 src/data_query/writers.py          atomic JSON/CSV writers
 src/data_query/path_safety.py      output collision protection
 src/data_query/logging_utils.py    structured logging
@@ -231,10 +261,11 @@ docker-compose.yml                 isolated end-to-end execution
 project-metadata.json              machine-readable application metadata
 .github/workflows/                 CI, security, CodeQL, and release automation
 pyproject.toml                     package/runtime/quality configuration
+requirements.txt                   conventional direct runtime manifest
 uv.lock                            generated runtime dependency lock
 requirements-dev.txt               exact development/security pins
 ```
 
 ## Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Keep features and fixes focused and include the tests that demonstrate their behavior. `CHANGELOG.md` records user-visible changes.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Keep features and fixes focused and include the tests that demonstrate their behavior. Use conventional commit prefixes for new work. `CHANGELOG.md` records user-visible changes.
