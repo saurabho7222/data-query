@@ -13,18 +13,22 @@ No unreleased user-visible changes.
 - A bounded `--cohort-periods` option (1..24) with declarative schema validation and deterministic retention rows.
 - Opt-in `--compare-period` analytics that compare a complete date window with the immediately preceding equal-length window.
 - Zero-baseline-safe percentage changes: comparison percentages are `null` when a previous metric is zero.
-- A dedicated `comparison.py` analytics engine so period derivation and comparison logic remain separate from aggregate report assembly.
+- Ranked product concentration analytics using SQLite CTEs/window functions for units, completed-order count, revenue share, cumulative revenue share, and Pareto-style 80% concentration.
+- A bounded `--product-limit` option (1..100) that truncates ranked product rows without changing full-population concentration metrics.
+- Dedicated `comparison.py` and `products.py` analytics engines so advanced calculations remain separate from aggregate report assembly.
 - A formal `THREAT_MODEL.md` covering assets, attacker capabilities, SQLite/path/SQL/resource-exhaustion threats, mitigations, supply-chain controls, and residual risks.
-- Architecture documentation for cohort semantics, period-comparison invariants, and the non-service purpose of Docker/Compose/Dev Container tooling.
+- Architecture documentation for cohort semantics, period-comparison invariants, product concentration, and the non-service purpose of Docker/Compose/Dev Container tooling.
 
 ### Changed
-- JSON report schema advanced to version 3 with `cohort_retention`, `period_comparison`, `cohort_periods`, and `compare_period` fields.
+- JSON report schema advanced to version 4 with `cohort_retention`, `period_comparison`, `product_concentration`, `cohort_periods`, `product_limit`, and `compare_period` fields.
+- Root `requirements.txt` now mirrors the canonical pinned runtime dependency from `pyproject.toml`; repository contract tests also verify key transitive packages are present in `uv.lock`.
 - CLI description and README now document advanced analytics behavior and report contracts.
-- Repository classification guidance now explicitly tells automated classifiers not to infer infrastructure/service status from local verification containers.
+- Repository classification guidance explicitly tells automated classifiers not to infer infrastructure/service status from local verification containers.
 
 ### Verification
-- Cohort retention was introduced with a contract-first test commit followed by a separate implementation commit.
-- Period comparison was introduced with a contract-first test commit followed by a separate implementation commit.
+- Cohort retention was introduced with a contract-first `test:` commit followed by a separate `feat:` implementation commit.
+- Product concentration was introduced with a contract-first `test:` commit followed by a separate `feat:` implementation commit.
+- Runtime-manifest consistency is protected by a focused repository contract test.
 - Python 3.11/3.12 tests, strict mypy, Ruff, package verification, lock verification, Docker/Compose execution, dependency audits, Gitleaks, and CodeQL remain gating checks.
 
 ## [0.2.1] - 2026-08-23

@@ -5,13 +5,14 @@ Data Query is a local Python command-line application. It reads an existing SQLi
 ## Data flow
 
 1. `cli.py` parses command-line arguments and delegates filter validation to `schemas.py`.
-2. `schemas.py` validates region, dates, date ordering, `top_limit`, the cohort horizon, and period-comparison preconditions as a single declarative configuration boundary.
+2. `schemas.py` validates region, dates, date ordering, `top_limit`, the cohort horizon, `product_limit`, and period-comparison preconditions as a single declarative configuration boundary.
 3. `path_safety.py` normalizes input/output paths and prevents collisions with the source database or between outputs.
 4. `validation.py` opens SQLite in read-only mode, enables defensive connection settings, runs `PRAGMA quick_check`, validates the required schema, and checks row integrity.
-5. `reporting.py` executes static parameterized SQL for summary, top-customer, monthly-revenue, and cohort-retention analytics.
-6. `comparison.py` derives an equal-length previous date window and computes current/previous completed-order and revenue metrics without dynamic SQL.
-7. `writers.py` writes JSON and optional CSV files through temporary files followed by atomic replacement.
-8. `logging_utils.py` emits text or structured JSON operational events without changing report output.
+5. `reporting.py` executes static parameterized SQL for summary, top-customer, monthly-revenue, and cohort-retention analytics and assembles the versioned report.
+6. `products.py` uses CTEs and SQLite window functions to rank product revenue, compute per-product/cumulative revenue share, and derive Pareto concentration metrics.
+7. `comparison.py` derives an equal-length previous date window and computes current/previous completed-order and revenue metrics without dynamic SQL.
+8. `writers.py` writes JSON and optional CSV files through temporary files followed by atomic replacement.
+9. `logging_utils.py` emits text or structured JSON operational events without changing report output.
 
 ## Advanced analytics
 
@@ -25,11 +26,17 @@ Report date filters constrain observed activity, not the historical first-comple
 
 `--compare-period` is opt-in and requires both `--start-date` and `--end-date`. `comparison.py` computes an immediately preceding window with exactly the same inclusive day count. Both windows use the same region scope. Percentage change is `null` when the previous baseline is zero instead of manufacturing an infinite percentage.
 
+### Product concentration
+
+`products.py` aggregates completed-order revenue by product, then applies SQLite window functions over the complete scoped product population. Each product receives a deterministic revenue rank, revenue share, and cumulative revenue share. The report also exposes the top product's share and the minimum number of ranked products required to reach at least 80% of scoped revenue.
+
+`product_limit` is bounded to 1..100 and controls only how many ranked product rows are returned. `total_products`, `products_to_80_pct`, and `top_product_share_pct` are calculated from the complete scoped product set before output truncation, so reducing the display limit cannot change the concentration summary. Region and date filters apply to product activity before ranking.
+
 ## Trust boundaries
 
-User-controlled CLI values enter through `ReportFilters` in `schemas.py`. Region labels are bounded, trimmed, and checked for control characters; dates must parse as ISO dates; `top_limit` is constrained to 1..100; `cohort_periods` is constrained to 1..24; reversed date ranges are rejected; and comparison mode requires a complete date window. `input_validation.py` is a small adapter used by `argparse`, not a second validation implementation.
+User-controlled CLI values enter through `ReportFilters` in `schemas.py`. Region labels are bounded, trimmed, and checked for control characters; dates must parse as ISO dates; `top_limit` and `product_limit` are constrained to 1..100; `cohort_periods` is constrained to 1..24; reversed date ranges are rejected; and comparison mode requires a complete date window. `input_validation.py` is a small adapter used by `argparse`, not a second validation implementation.
 
-SQLite data is untrusted input as well. `validation.py` verifies table/column presence, date format, non-negative numeric values, and relationship integrity before analytics run. Query values are passed through SQLite parameter binding rather than interpolated into SQL strings. See [THREAT_MODEL.md](../THREAT_MODEL.md) for the full asset/threat/mitigation model and residual risks.
+SQLite data is untrusted input as well. `validation.py` verifies table/column presence, date format, non-negative numeric values, and relationship integrity before analytics run. Query values are passed through SQLite parameter binding rather than interpolated into SQL strings. Advanced analytics use static SQL, including the product window-function query. See [THREAT_MODEL.md](../THREAT_MODEL.md) for the full asset/threat/mitigation model and residual risks.
 
 ## SQLite connection invariants
 
@@ -49,7 +56,7 @@ Expected input/configuration failures use `InputError` and produce CLI exit code
 
 ## Reproducibility and verification
 
-The runtime dependency is pinned in `pyproject.toml` and its full graph is generated in `uv.lock`. CI verifies the lock with `uv lock --check`, installs it with `uv sync --frozen`, runs Ruff, strict mypy, the Python 3.11/3.12 test matrix with coverage, wheel installation, Docker/Compose execution, dependency auditing, secret scanning, and CodeQL.
+The direct runtime dependency is declared consistently in `pyproject.toml`, `requirements.txt`, and `project-metadata.json`; the complete runtime graph is generated in `uv.lock`. A repository contract test verifies those manifests agree and that the expected Pydantic transitive packages are present. CI verifies the lock with `uv lock --check`, installs it with `uv sync --frozen`, runs Ruff, strict mypy, the Python 3.11/3.12 test matrix with coverage, wheel installation, Docker/Compose execution, dependency auditing, secret scanning, and CodeQL.
 
 ## Why container tooling exists in a non-service project
 
