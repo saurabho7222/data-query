@@ -60,6 +60,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=6,
         help="number of monthly retention periods to include (1-24)",
     )
+    parser.add_argument(
+        "--compare-period",
+        action="store_true",
+        help="compare the selected date range with the immediately preceding equal-length range",
+    )
     parser.add_argument("--customers-csv", type=Path, help="optional CSV export of top customers")
     parser.add_argument("--monthly-csv", type=Path, help="optional CSV export of monthly revenue")
     parser.add_argument("--validate-only", action="store_true", help="validate the database without writing report files")
@@ -90,6 +95,7 @@ def main(argv: list[str] | None = None) -> int:
             end_date=args.end_date,
             top_limit=args.top_limit,
             cohort_periods=args.cohort_periods,
+            compare_period=args.compare_period,
         )
         options = ReportOptions(
             output_json=args.output,

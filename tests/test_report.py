@@ -30,6 +30,7 @@ def test_generates_expected_report(sales_db: Path, tmp_path: Path) -> None:
         "end_date": None,
         "top_limit": 5,
         "cohort_periods": 6,
+        "compare_period": False,
     }
     assert report["summary"] == {
         "total_customers": 3,
@@ -41,6 +42,7 @@ def test_generates_expected_report(sales_db: Path, tmp_path: Path) -> None:
         {"customer_id": 1, "name": "Aster Labs", "region": "north", "orders": 2, "revenue": 200.0},
         {"customer_id": 2, "name": "Blue Harbor", "region": "west", "orders": 1, "revenue": 120.99},
     ]
+    assert report["period_comparison"] is None
     assert json.loads(output.read_text()) == report
 
 
@@ -97,6 +99,7 @@ def test_empty_database_returns_zero_summary(tmp_path: Path) -> None:
     assert report["top_customers"] == []
     assert report["monthly_revenue"] == []
     assert report["cohort_retention"] == []
+    assert report["period_comparison"] is None
 
 
 def test_rejects_negative_money_inputs(sales_db: Path) -> None:

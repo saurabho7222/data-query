@@ -59,6 +59,7 @@ class ReportFilters(BaseModel):
     end_date: date | None = None
     top_limit: int = Field(default=5, ge=1, le=100)
     cohort_periods: int = Field(default=6, ge=1, le=24)
+    compare_period: bool = False
 
     @field_validator("region", mode="before")
     @classmethod
@@ -71,6 +72,8 @@ class ReportFilters(BaseModel):
     def _date_range_must_be_ordered(self) -> Self:
         if self.start_date and self.end_date and self.start_date > self.end_date:
             raise ValueError("start date must not be after end date")
+        if self.compare_period and (self.start_date is None or self.end_date is None):
+            raise ValueError("period comparison requires both start date and end date")
         return self
 
     def __init__(self, **data: object) -> None:
