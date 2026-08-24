@@ -20,8 +20,10 @@ jobs:
         run: uv lock --check
       - name: Frozen runtime sync
         run: uv sync --frozen
-      - name: Smoke-test locked runtime
+      - name: Smoke-test locked CLI runtime
         run: uv run data-query --help
+      - name: Smoke-test locked API runtime
+        run: uv run python -c "from data_query.api import create_app; assert callable(create_app)"
 
   lint:
     name: lint
@@ -74,6 +76,8 @@ jobs:
         run: pytest --cov=data_query --cov-report=term-missing --cov-report=xml --cov-fail-under=90
       - name: Smoke-test installed CLI
         run: python -m data_query --help
+      - name: Smoke-test installed API module
+        run: python -c "from data_query.api import create_app; assert callable(create_app)"
 
   package:
     name: package
@@ -90,11 +94,13 @@ jobs:
         run: |
           python -m venv /tmp/data-query-package-check
           /tmp/data-query-package-check/bin/python -m pip install dist/*.whl
-      - name: Smoke-test packaged console script
+      - name: Smoke-test packaged CLI
         run: /tmp/data-query-package-check/bin/data-query --help
+      - name: Smoke-test packaged API import
+        run: /tmp/data-query-package-check/bin/python -c "from data_query.api import create_app; assert callable(create_app)"
 
   docker:
-    name: docker-compose
+    name: docker-compose-api
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -104,5 +110,7 @@ jobs:
         run: docker run --rm data-query python3 -m pytest tests -v
       - name: Validate docker-compose.yml
         run: docker compose -f docker-compose.yml config --quiet
-      - name: Run self-contained Compose demo
+      - name: Run self-contained Compose CLI demo
         run: make compose-demo
+      - name: Run containerized API health/report/metrics smoke test
+        run: make compose-api-smoke

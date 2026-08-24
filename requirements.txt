@@ -1,2 +1,4 @@
 # Direct runtime dependencies; keep in sync with pyproject.toml [project.dependencies].
+fastapi==0.141.1
 pydantic==2.13.4
+uvicorn==0.52.3

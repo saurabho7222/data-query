@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TypedDict
+
+from typing_extensions import TypedDict
 
 from .errors import InputError as InputError
 from .schemas import ReportFilters as ReportFilters

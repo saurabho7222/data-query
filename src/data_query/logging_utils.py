@@ -1,4 +1,4 @@
-"""Logging helpers for human-readable and machine-readable CLI diagnostics."""
+"""Versioned logging helpers for human-readable and machine-readable diagnostics."""
 
 from __future__ import annotations
 
@@ -13,12 +13,24 @@ STRUCTURED_FIELDS: Final[tuple[str, ...]] = (
     "output_path",
 )
 
+JSON_LOG_SCHEMA: Final[dict[str, object]] = {
+    "schema_version": 1,
+    "common_required": ("schema_version", "level", "logger", "message", "event"),
+    "event_required": {
+        "validation_failed": ("error_type", "input_path"),
+        "query_failed": ("error_type", "input_path"),
+        "database_valid": ("input_path",),
+        "report_written": ("output_path",),
+    },
+}
+
 
 class JsonLogFormatter(logging.Formatter):
-    """Render stable one-line JSON logs for automation and troubleshooting."""
+    """Render stable one-line JSON logs that follow ``JSON_LOG_SCHEMA``."""
 
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, object] = {
+            "schema_version": JSON_LOG_SCHEMA["schema_version"],
             "level": record.levelname.lower(),
             "logger": record.name,
             "message": record.getMessage(),
