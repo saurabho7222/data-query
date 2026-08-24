@@ -1,0 +1,36 @@
+name: Refresh release lock
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lock:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.0"
+      - name: Regenerate and verify release lock
+        run: |
+          uv lock
+          uv lock --check
+      - name: Commit generated lock when changed
+        run: |
+          if git diff --quiet -- uv.lock; then
+            echo "uv.lock is already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add uv.lock
+          git commit -m "chore: refresh uv lock for 0.3.0"
+          git push origin HEAD:${GITHUB_HEAD_REF}
