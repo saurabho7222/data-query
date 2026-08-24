@@ -22,4 +22,6 @@ RUN python3 -m pip install --break-system-packages --no-cache-dir -r requirement
 COPY examples ./examples
 COPY tests ./tests
 
+EXPOSE 8000
+
 CMD ["data-query", "--help"]

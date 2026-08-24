@@ -26,3 +26,29 @@ services:
       - INFO
     volumes:
       - ./.local:/data
+
+  api:
+    build:
+      context: .
+    depends_on:
+      sample-db:
+        condition: service_completed_successfully
+    command: ["data-query-api"]
+    environment:
+      DATA_QUERY_DATA_ROOT: /data
+      DATA_QUERY_HOST: 0.0.0.0
+      DATA_QUERY_PORT: "8000"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./.local:/data:ro
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).read()"
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 2s

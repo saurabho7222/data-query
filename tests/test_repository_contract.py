@@ -61,13 +61,34 @@ def test_repository_contains_no_infrastructure_as_code_artifacts() -> None:
     assert not list(REPO_ROOT.rglob("*.tfstate"))
 
 
-def test_conventional_compose_contract_is_discoverable() -> None:
+def test_compose_contract_exposes_cli_and_healthchecked_api() -> None:
     compose = REPO_ROOT / "docker-compose.yml"
     assert compose.is_file()
     content = compose.read_text(encoding="utf-8")
     assert "sample-db:" in content
     assert "report:" in content
+    assert "api:" in content
     assert "service_completed_successfully" in content
+    assert "data-query-api" in content
+    assert "127.0.0.1:8000:8000" in content
+    assert "/healthz" in content
+    assert "DATA_QUERY_DATA_ROOT" in content
+
+
+def test_dockerfile_exposes_optional_api_port() -> None:
+    content = (REPO_ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert "EXPOSE 8000" in content
+    assert "requirements.txt" in content
+
+
+def test_ci_verifies_locked_cli_api_and_container_smoke() -> None:
+    content = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "uv lock --check" in content
+    assert "mypy strict" in content
+    assert "pytest coverage gate" in content
+    assert "Smoke-test locked API runtime" in content
+    assert "Smoke-test packaged API import" in content
+    assert "compose-api-smoke" in content
 
 
 def test_devcontainer_is_valid_and_runs_quality_setup() -> None:
