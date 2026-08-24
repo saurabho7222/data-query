@@ -9,7 +9,13 @@ from datetime import date
 from pathlib import Path
 
 from .core import InputError, ReportFilters, ReportOptions, write_report
-from .input_validation import validate_cohort_periods, validate_iso_date, validate_region_name, validate_top_limit
+from .input_validation import (
+    validate_cohort_periods,
+    validate_iso_date,
+    validate_product_limit,
+    validate_region_name,
+    validate_top_limit,
+)
 from .logging_utils import configure_logger
 from .validation_service import validate_database
 
@@ -46,6 +52,13 @@ def _cohort_periods(value: str) -> int:
         raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
+def _product_limit(value: str) -> int:
+    try:
+        return validate_product_limit(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Generate deterministic advanced analytics from SQLite sales data.")
     parser.add_argument("--input", type=Path, default=Path("/app/input.db"), help="SQLite input database")
@@ -59,6 +72,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=_cohort_periods,
         default=6,
         help="number of monthly retention periods to include (1-24)",
+    )
+    parser.add_argument(
+        "--product-limit",
+        type=_product_limit,
+        default=10,
+        help="number of ranked products to include (1-100)",
     )
     parser.add_argument(
         "--compare-period",
@@ -95,6 +114,7 @@ def main(argv: list[str] | None = None) -> int:
             end_date=args.end_date,
             top_limit=args.top_limit,
             cohort_periods=args.cohort_periods,
+            product_limit=args.product_limit,
             compare_period=args.compare_period,
         )
         options = ReportOptions(

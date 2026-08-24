@@ -6,6 +6,7 @@ import sqlite3
 
 from .comparison import build_period_comparison
 from .models import Report, ReportFilters
+from .products import build_product_concentration
 
 SUMMARY_SQL = """
 SELECT
@@ -119,7 +120,7 @@ def _scope_params(filters: ReportFilters) -> dict[str, str | None]:
 
 
 def build_report(connection: sqlite3.Connection, filters: ReportFilters | None = None) -> Report:
-    """Build deterministic aggregate, cohort, and comparison analytics."""
+    """Build deterministic aggregate, cohort, product, and comparison analytics."""
 
     filters = filters or ReportFilters()
     params = _scope_params(filters)
@@ -136,13 +137,14 @@ def build_report(connection: sqlite3.Connection, filters: ReportFilters | None =
     ).fetchall()
 
     return {
-        "schema_version": 3,
+        "schema_version": 4,
         "filters": {
             "region": filters.region,
             "start_date": filters.start_date.isoformat() if filters.start_date else None,
             "end_date": filters.end_date.isoformat() if filters.end_date else None,
             "top_limit": filters.top_limit,
             "cohort_periods": filters.cohort_periods,
+            "product_limit": filters.product_limit,
             "compare_period": filters.compare_period,
         },
         "summary": {
@@ -175,5 +177,6 @@ def build_report(connection: sqlite3.Connection, filters: ReportFilters | None =
             }
             for row in cohort_rows
         ],
+        "product_concentration": build_product_concentration(connection, filters),
         "period_comparison": build_period_comparison(connection, filters),
     }

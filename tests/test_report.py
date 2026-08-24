@@ -23,13 +23,14 @@ def test_generates_expected_report(sales_db: Path, tmp_path: Path) -> None:
     output = tmp_path / "report.json"
     report = write_report(sales_db, ReportOptions(output))
 
-    assert report["schema_version"] == 3
+    assert report["schema_version"] == 4
     assert report["filters"] == {
         "region": None,
         "start_date": None,
         "end_date": None,
         "top_limit": 5,
         "cohort_periods": 6,
+        "product_limit": 10,
         "compare_period": False,
     }
     assert report["summary"] == {
@@ -99,6 +100,12 @@ def test_empty_database_returns_zero_summary(tmp_path: Path) -> None:
     assert report["top_customers"] == []
     assert report["monthly_revenue"] == []
     assert report["cohort_retention"] == []
+    assert report["product_concentration"] == {
+        "total_products": 0,
+        "products_to_80_pct": 0,
+        "top_product_share_pct": 0.0,
+        "products": [],
+    }
     assert report["period_comparison"] is None
 
 
