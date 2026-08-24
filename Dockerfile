@@ -10,7 +10,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml uv.lock README.md project-metadata.json docker-compose.yml ./
+COPY pyproject.toml uv.lock requirements.txt README.md project-metadata.json docker-compose.yml ./
 COPY .devcontainer ./.devcontainer
 COPY .github/workflows/release.yml ./.github/workflows/release.yml
 COPY src ./src
