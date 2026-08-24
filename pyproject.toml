@@ -4,20 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "data-query"
-version = "0.3.0"
-description = "A typed SQLite analytics CLI application with cohort retention, period comparison, and deterministic reporting."
+version = "0.4.0"
+description = "A typed SQLite analytics application with CLI and optional HTTP API interfaces."
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["pydantic==2.13.4"]
-keywords = ["cli", "sqlite", "analytics", "data-processing", "reporting"]
+dependencies = [
+  "fastapi==0.141.1",
+  "pydantic==2.13.4",
+  "uvicorn==0.52.3",
+]
+keywords = ["cli", "api", "sqlite", "analytics", "data-processing", "reporting"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",
+  "Environment :: Web Environment",
   "Intended Audience :: Developers",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Topic :: Database",
+  "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
   "Topic :: Scientific/Engineering :: Information Analysis",
   "Topic :: Utilities",
 ]
@@ -30,15 +36,18 @@ Documentation = "https://github.com/saurabho7222/data-query#readme"
 
 [project.scripts]
 data-query = "data_query.cli:main"
+data-query-api = "data_query.api:main"
 
 [tool.data-query]
-project_type = "cli-application"
+project_type = "application"
 category = "application"
 domain = "data-processing"
 runtime = "python"
 database = "embedded-sqlite"
+primary_interface = "command-line"
+interfaces = ["command-line", "http-api"]
 infrastructure_as_code = false
-service = false
+service = true
 self_contained = true
 
 [tool.setuptools.packages.find]

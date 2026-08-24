@@ -1,20 +1,37 @@
 {
   "name": "data-query",
-  "project_type": "cli-application",
+  "project_type": "application",
   "package_type": "python-application",
   "category": "application",
   "domain": "data-processing",
   "language": "python",
+  "primary_interface": "command-line",
   "interface": "command-line",
+  "interfaces": [
+    "command-line",
+    "http-api"
+  ],
   "database": "embedded-sqlite",
   "infrastructure_as_code": false,
-  "service": false,
+  "service": true,
   "self_contained": true,
   "schema_validation": "pydantic",
   "runtime_dependency_policy": "exact-pins-with-generated-lock",
   "runtime_dependencies": [
-    "pydantic==2.13.4"
+    "fastapi==0.141.1",
+    "pydantic==2.13.4",
+    "uvicorn==0.52.3"
   ],
-  "runtime_dependency_count": 1,
-  "lockfile": "uv.lock"
+  "runtime_dependency_count": 3,
+  "lockfile": "uv.lock",
+  "observability": {
+    "health_endpoint": "/healthz",
+    "metrics_endpoint": "/metrics",
+    "structured_logging": true
+  },
+  "http_api": {
+    "entry_point": "data-query-api",
+    "analytics_endpoint": "/v1/report",
+    "sandboxed_data_root": true
+  }
 }
