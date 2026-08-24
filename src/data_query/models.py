@@ -15,6 +15,8 @@ __all__ = [
     "CustomerRow",
     "InputError",
     "MonthlyRow",
+    "PeriodComparison",
+    "PeriodMetrics",
     "Report",
     "ReportFilters",
     "ReportOptions",
@@ -51,12 +53,29 @@ class CohortRetentionRow(TypedDict):
     retention_rate: float
 
 
+class PeriodMetrics(TypedDict):
+    completed_orders: int
+    completed_revenue: float
+
+
+class PeriodComparison(TypedDict):
+    current_start: str
+    current_end: str
+    previous_start: str
+    previous_end: str
+    current: PeriodMetrics
+    previous: PeriodMetrics
+    order_change_pct: float | None
+    revenue_change_pct: float | None
+
+
 class AppliedFilters(TypedDict):
     region: str | None
     start_date: str | None
     end_date: str | None
     top_limit: int
     cohort_periods: int
+    compare_period: bool
 
 
 class Report(TypedDict):
@@ -66,6 +85,7 @@ class Report(TypedDict):
     top_customers: list[CustomerRow]
     monthly_revenue: list[MonthlyRow]
     cohort_retention: list[CohortRetentionRow]
+    period_comparison: PeriodComparison | None
 
 
 @dataclass(frozen=True, slots=True)

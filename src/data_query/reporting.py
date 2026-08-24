@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
+from .comparison import build_period_comparison
 from .models import Report, ReportFilters
 
 SUMMARY_SQL = """
@@ -118,7 +119,7 @@ def _scope_params(filters: ReportFilters) -> dict[str, str | None]:
 
 
 def build_report(connection: sqlite3.Connection, filters: ReportFilters | None = None) -> Report:
-    """Build deterministic aggregate and cohort analytics from a validated database."""
+    """Build deterministic aggregate, cohort, and comparison analytics."""
 
     filters = filters or ReportFilters()
     params = _scope_params(filters)
@@ -142,6 +143,7 @@ def build_report(connection: sqlite3.Connection, filters: ReportFilters | None =
             "end_date": filters.end_date.isoformat() if filters.end_date else None,
             "top_limit": filters.top_limit,
             "cohort_periods": filters.cohort_periods,
+            "compare_period": filters.compare_period,
         },
         "summary": {
             "total_customers": int(summary_row["total_customers"]),
@@ -173,4 +175,5 @@ def build_report(connection: sqlite3.Connection, filters: ReportFilters | None =
             }
             for row in cohort_rows
         ],
+        "period_comparison": build_period_comparison(connection, filters),
     }
