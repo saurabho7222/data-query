@@ -12,17 +12,22 @@ For non-sensitive hardening ideas, a normal issue or pull request is appropriate
 
 ## Threat model
 
-The repository's security boundaries, attacker capabilities, mitigations, and residual risks are documented in [THREAT_MODEL.md](THREAT_MODEL.md). The model covers untrusted CLI values, malicious SQLite content, path collisions, read-only database invariants, SQL parameterization, bounded analytics work, logging exposure, and dependency supply-chain risks.
+[THREAT_MODEL.md](THREAT_MODEL.md) covers untrusted CLI values, HTTP query parameters, API database-path sandboxing, malicious SQLite content, read-only invariants, parameterized SQL, bounded analytics, structured logging, metrics exposure, sanitized HTTP failures, network-binding assumptions, and dependency supply-chain risks.
+
+The optional API is an application interface, not infrastructure provisioning. Repository Compose verification binds it to localhost; operators choosing broader exposure must provide deployment-level authentication, TLS, rate limiting, and network policy appropriate to their environment.
 
 ## Automated checks
 
 Every push and pull request runs:
 
-- `pip-audit` against the frozen runtime dependency graph exported from `uv.lock`;
+- frozen `uv.lock` verification and runtime sync;
+- `pip-audit` against the frozen runtime dependency graph;
 - `pip-audit` against pinned development dependencies;
-- Gitleaks against full repository history to detect accidental secrets;
-- CodeQL static analysis for Python security and quality findings;
-- Ruff, strict mypy, tests, and coverage in the main CI workflow;
-- a clean wheel build/install smoke test and Docker/Compose verification.
+- direct dependency freshness verification;
+- Gitleaks against repository history;
+- CodeQL static analysis;
+- Ruff, strict mypy, and Python 3.11/3.12 coverage-gated tests;
+- clean wheel installation with CLI and API import smoke tests;
+- Docker/Compose tests including a running API `/healthz`, `/v1/report`, and `/metrics` smoke test.
 
-Dependabot checks Python dependencies weekly and GitHub Actions monthly. Runtime dependency freshness is also checked by `scripts/check_dependency_freshness.py`, with evidence uploaded from the Security workflow.
+Dependabot checks Python dependencies weekly and GitHub Actions monthly. Runtime dependency freshness evidence is retained by the Security workflow.

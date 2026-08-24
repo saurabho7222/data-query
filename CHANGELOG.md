@@ -6,6 +6,37 @@ All notable changes to this project are documented here.
 
 No unreleased user-visible changes.
 
+## [0.4.0] - 2026-08-24
+
+### Added
+- Optional `data-query-api` FastAPI/Uvicorn service over the existing validated SQLite analytics engine.
+- `/healthz` service identity/version endpoint and `/metrics` Prometheus-style aggregate counters.
+- `/v1/report` HTTP analytics endpoint using the same report schema and validation pipeline as the CLI.
+- API database-path sandboxing through `DATA_QUERY_DATA_ROOT`, rejecting traversal outside the configured root.
+- Exact runtime pins for FastAPI, Pydantic, and Uvicorn with a regenerated transitive `uv.lock`.
+- Scanner-visible multi-interface application metadata: primary CLI plus optional HTTP API, `service=true`, `infrastructure_as_code=false`.
+- `JSON_LOG_SCHEMA` version 1 plus end-to-end CLI tests for success, validation, validate-only, and SQLite-failure events.
+- Docker/Compose API service with localhost binding, read-only data mount, healthcheck, and a real health/report/metrics smoke target.
+
+### Changed
+- Project metadata now describes Data Query as an application rather than a CLI-only application while keeping the CLI as the primary interface.
+- Docker exposes application port 8000 for the optional API; the default container command remains the CLI help command.
+- CI verifies locked, installed, packaged, and containerized API behavior in addition to existing CLI checks.
+- Shared report `TypedDict` models now use `typing_extensions.TypedDict` for Pydantic/FastAPI compatibility on Python 3.11 and 3.12.
+- Documentation, classification guidance, architecture, and threat model now describe both interfaces without implying infrastructure provisioning.
+
+### Security
+- API database selection is restricted to a resolved configured data root.
+- SQLite errors returned over HTTP are sanitized; expected input errors use a stable HTTP 422 envelope.
+- Compose mounts API database data read-only and binds the verification service to `127.0.0.1`.
+- Metrics expose aggregate counters only and do not contain report rows or query/database contents.
+
+### Verification
+- API behavior was introduced contract-first in `tests/test_api.py` before implementation.
+- Python 3.11 CI identified a real Pydantic `TypedDict` compatibility issue; the focused compatibility fix preserves response-model validation rather than disabling it.
+- CI now smoke-tests `/healthz`, `/v1/report`, and `/metrics` through the running container service.
+- Frozen lock verification, Python 3.11/3.12 coverage tests, strict mypy, Ruff, packaging, dependency audits, Gitleaks, and CodeQL remain gating checks.
+
 ## [0.3.0] - 2026-08-24
 
 ### Added
@@ -17,71 +48,31 @@ No unreleased user-visible changes.
 - A bounded `--product-limit` option (1..100) that truncates ranked product rows without changing full-population concentration metrics.
 - Dedicated `comparison.py` and `products.py` analytics engines so advanced calculations remain separate from aggregate report assembly.
 - A formal `THREAT_MODEL.md` covering assets, attacker capabilities, SQLite/path/SQL/resource-exhaustion threats, mitigations, supply-chain controls, and residual risks.
-- Architecture documentation for cohort semantics, period-comparison invariants, product concentration, and the non-service purpose of Docker/Compose/Dev Container tooling.
 
 ### Changed
-- JSON report schema advanced to version 4 with `cohort_retention`, `period_comparison`, `product_concentration`, `cohort_periods`, `product_limit`, and `compare_period` fields.
-- Root `requirements.txt` now mirrors the canonical pinned runtime dependency from `pyproject.toml`; repository contract tests also verify key transitive packages are present in `uv.lock`.
-- CLI description and README now document advanced analytics behavior and report contracts.
-- Repository classification guidance explicitly tells automated classifiers not to infer infrastructure/service status from local verification containers.
+- JSON report schema advanced to version 4 with cohort, period-comparison, product-concentration, and bounded-filter fields.
+- Root `requirements.txt` mirrors the canonical runtime dependency metadata for conventional scanners.
 
 ### Verification
-- Cohort retention was introduced with a contract-first `test:` commit followed by a separate `feat:` implementation commit.
-- Product concentration was introduced with a contract-first `test:` commit followed by a separate `feat:` implementation commit.
-- Runtime-manifest consistency is protected by a focused repository contract test.
+- Cohort retention and product concentration were introduced with contract-first `test:` commits followed by separate `feat:` implementation commits.
 - Python 3.11/3.12 tests, strict mypy, Ruff, package verification, lock verification, Docker/Compose execution, dependency audits, Gitleaks, and CodeQL remain gating checks.
 
 ## [0.2.1] - 2026-08-23
 
 ### Added
-- Machine-readable `project_type = "cli-application"` metadata in `pyproject.toml` plus `project-metadata.json` with explicit `infrastructure_as_code = false`.
-- `docker-compose.yml` and `make compose-demo` for one-command isolated sample-database generation plus JSON/CSV report execution.
-- A tested `.devcontainer/devcontainer.json` setup for reproducible editor/container onboarding.
-- A canonical Pydantic `ReportFilters` schema in `src/data_query/schemas.py` covering region bounds, ISO dates, date ordering, and `top_limit` bounds.
-- An application error hierarchy in `src/data_query/errors.py` while preserving the public `InputError` API.
-- SQLite connection hardening with URI-safe filenames, read-only/query-only mode, `trusted_schema=OFF`, foreign keys, busy timeout, and `PRAGMA quick_check`.
-- Architecture documentation covering data flow, trust boundaries, failure handling, and reproducibility.
-- Runtime dependency freshness checks alongside development dependency checks, with CI artifact upload for the audit result.
-- Locked-runtime CI verification using `uv lock --check` and `uv sync --frozen`.
-- A tag/release workflow that verifies a built wheel in a clean environment before publishing a GitHub Release.
+- Machine-readable application metadata and `project-metadata.json` with explicit `infrastructure_as_code = false`.
+- `docker-compose.yml`, Dev Container configuration, declarative Pydantic filters, hardened SQLite connection settings, architecture docs, dependency freshness checks, and release automation.
 
 ### Changed
-- Runtime validation now uses the exactly pinned `pydantic==2.13.4` dependency; the full transitive graph is generated into `uv.lock`.
-- Analytics SQL is now static query text with bound values instead of dynamically assembled filter SQL.
-- SQLite schema inspection now uses a parameterized `pragma_table_info(?)` table-valued query.
-- Dependency auditing now covers the locked runtime project and exactly pinned development tools.
-- Refreshed pinned development tools to current verified releases: mypy 2.3.1, pip-audit 2.10.1, pytest 9.1.1, pytest-cov 7.1.0, and Ruff 0.16.4.
-- Updated GitHub Actions generations to `actions/checkout@v7`, `actions/setup-python@v7`, `actions/upload-artifact@v7`, and `github/codeql-action@v4`.
-- CI quality checks are exposed as explicit `lint`, `typecheck`, and matrixed `tests` jobs, plus package, dependency-lock, and Docker/Compose jobs.
+- Runtime validation uses exactly pinned Pydantic and a generated `uv.lock` graph.
+- Analytics SQL uses static queries with bound values.
+- CI exposes explicit lint, typecheck, matrixed tests, package, lock, and Docker/Compose jobs.
 
 ### Security
-- Added explicit tests proving SQL metacharacters in region values remain literal bound data.
-- Added tests for read-only SQLite enforcement, defensive PRAGMAs, and URI-reserved database filenames.
-- Dependency freshness evidence is retained as a workflow artifact on every Security run.
+- Added SQL-metacharacter, read-only SQLite, defensive PRAGMA, and URI-reserved filename tests.
 
 ## [0.2.0] - 2026-08-23
 
 ### Added
-- Conventional `src/data_query` installable Python package and `data-query` console entry point.
-- Root-level discoverable test suite with coverage enforcement across Python 3.11 and 3.12.
-- Region, inclusive date-range, and bounded top-customer filters.
-- Optional CSV exports for customer and monthly aggregates.
-- Explicit CLI value validators for region labels and numeric limits.
-- Data-integrity validation for dates, monetary values, and relational references.
-- Output-path collision protection so reports cannot overwrite the source database or each other.
-- `--validate-only` database health-check mode that writes no artifacts.
-- Human-readable and structured JSON logging with configurable log levels.
-- Responsibility-based modules for models, validation, reporting, output writers, path safety, and logging.
-- `uv.lock`, pinned development dependencies, and Dependabot configuration.
-- Ruff linting, strict mypy checks, and a 90% minimum coverage gate.
-- Clean wheel build/install verification and Docker build/test verification in CI.
-- Dependency auditing, full-history Gitleaks scanning, and CodeQL static analysis.
-- `CLASSIFICATION.md`, `CONTRIBUTING.md`, `SECURITY.md`, `.env.example`, and reproducible Make targets.
-
-### Changed
-- Repository layout is a standalone Python application/data utility.
-- Development dependency `pytest` was upgraded to a patched release.
-- Project classification is explicitly documented as a Python data-processing CLI rather than infrastructure-as-code.
-
-### Verification
-- GitHub Actions validates linting, strict type checking, tests, coverage, wheel packaging, Docker execution, dependency auditing, secret scanning, and CodeQL analysis on pushes and pull requests.
+- Conventional `src/data_query` installable package and `data-query` console entry point.
+- Root pytest suite with coverage enforcement, filters, CSV exports, validation, collision protection, validate-only mode, structured logging, typed modules, `uv.lock`, pinned development dependencies, CI, dependency auditing, Gitleaks, and CodeQL.

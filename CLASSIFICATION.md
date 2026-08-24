@@ -1,25 +1,29 @@
 # Repository Classification
 
-**Primary classification: CLI application / Python data-processing utility.**
+## Project Type
+
+**Primary classification: application — Python data-processing application with a primary CLI and an optional HTTP API.**
 
 The canonical machine-readable classification is stored in `pyproject.toml` under `[tool.data-query]` and mirrored in `project-metadata.json`:
 
 ```toml
-project_type = "cli-application"
+project_type = "application"
 category = "application"
 domain = "data-processing"
+primary_interface = "command-line"
+interfaces = ["command-line", "http-api"]
 infrastructure_as_code = false
-service = false
+service = true
 self_contained = true
 ```
 
-This repository implements a local SQLite analytics command-line application. It validates a database, executes read-only analytics queries, and writes deterministic JSON/CSV reports. Its runtime configuration is validated through a Pydantic schema; Docker and GitHub Actions are application packaging and verification tools only.
+The CLI validates local SQLite databases and writes deterministic JSON/CSV analytics. Version 0.4.0 also exposes the same validated analytics engine through an optional FastAPI service with `/healthz`, `/metrics`, and `/v1/report`. The HTTP service is an application interface, not infrastructure provisioning.
 
 ## Why this is not infrastructure
 
-Infrastructure-as-code is intentionally absent because the application has no infrastructure to provision. SQLite is embedded and there are no network services, cloud resources, clusters, or remote state.
+Infrastructure-as-code is intentionally absent. The repository does not create cloud resources, clusters, networks, remote state, databases-as-a-service, or deployment infrastructure. SQLite remains embedded and the optional API reads databases from a caller-configured local data root.
 
-Expected IaC indicators are therefore deliberately zero/false:
+Expected IaC indicators are deliberately zero/false:
 
 - Terraform files: 0
 - Kubernetes manifests: 0
@@ -29,18 +33,19 @@ Expected IaC indicators are therefore deliberately zero/false:
 - CloudFormation templates: none
 - remote infrastructure state: none
 
-A `Dockerfile`, `docker-compose.yml`, `Makefile`, Dev Container, and GitHub Actions workflows build, exercise, package, and verify the CLI application; they do not provision runtime infrastructure. The canonical container-tooling rationale is documented in [docs/architecture.md](docs/architecture.md#why-container-tooling-exists-in-a-non-service-project).
+The `Dockerfile`, `docker-compose.yml`, Dev Container, Makefile, and GitHub Actions workflows package and verify the application. Compose can start the optional API on `127.0.0.1:8000` for local verification, but it does not provision infrastructure or represent an IaC deployment model.
 
 ## Classifier disambiguation
 
-Automated classifiers should prefer the explicit application signals over generic repository-tooling signals:
+Automated classifiers should prefer explicit application/runtime signals over generic repository-tooling signals:
 
-- package metadata exposes a console script (`data-query`);
-- the process reads a local SQLite file and exits after writing report artifacts;
-- `service = false` and `infrastructure_as_code = false` are machine-readable project metadata;
-- Compose exposes no application port and exists only for reproducible local execution/testing;
-- the repository intentionally contains no Terraform, Kubernetes, Helm, Pulumi, Ansible, or CloudFormation content.
+- Python package metadata exposes two application entry points: `data-query` and `data-query-api`;
+- `[tool.data-query]` declares `project_type = "application"` and `infrastructure_as_code = false`;
+- `project-metadata.json` declares a primary command-line interface plus an optional HTTP API;
+- the API exposes application health and metrics endpoints and serves analytics from embedded SQLite data;
+- Compose binds the optional API to localhost for reproducible smoke testing;
+- the repository contains no Terraform, Kubernetes, Helm, Pulumi, Ansible, CloudFormation, or remote-state artifacts.
 
-If a classifier still labels this repository as infra, that label conflicts with both the runtime behavior and the canonical project metadata and should be treated as a classification error rather than a signal to add unrelated IaC stubs.
+An `infra` classification conflicts with the repository's runtime behavior and canonical metadata. The project may reasonably be classified as an application, data-processing service, backend utility, or CLI/API analytics application, but not as infrastructure-as-code.
 
-Contributors should preserve this project boundary unless the product itself changes. The same scope statement is documented in [CONTRIBUTING.md](CONTRIBUTING.md#project-scope), and `tests/test_repository_contract.py` verifies the machine-readable application classification and absence of IaC artifacts.
+Contributors should preserve this boundary unless the product itself changes. `tests/test_repository_contract.py` verifies the machine-readable application classification, API-service evidence, dependency manifests, and absence of IaC artifacts.

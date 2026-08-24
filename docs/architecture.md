@@ -1,65 +1,96 @@
 # Architecture
 
-Data Query is a local Python command-line application. It reads an existing SQLite database, validates it, runs deterministic analytics, and writes JSON/CSV outputs. It does not provision infrastructure or run a network service.
+Data Query is a typed Python analytics application with two interfaces over one SQLite analytics engine: a primary command-line interface and an optional HTTP API. Neither interface provisions infrastructure. Both validate caller-controlled inputs before running read-only analytics.
 
-## Data flow
+## Component boundaries
 
 1. `cli.py` parses command-line arguments and delegates filter validation to `schemas.py`.
-2. `schemas.py` validates region, dates, date ordering, `top_limit`, the cohort horizon, `product_limit`, and period-comparison preconditions as a single declarative configuration boundary.
-3. `path_safety.py` normalizes input/output paths and prevents collisions with the source database or between outputs.
-4. `validation.py` opens SQLite in read-only mode, enables defensive connection settings, runs `PRAGMA quick_check`, validates the required schema, and checks row integrity.
-5. `reporting.py` executes static parameterized SQL for summary, top-customer, monthly-revenue, and cohort-retention analytics and assembles the versioned report.
-6. `products.py` uses CTEs and SQLite window functions to rank product revenue, compute per-product/cumulative revenue share, and derive Pareto concentration metrics.
-7. `comparison.py` derives an equal-length previous date window and computes current/previous completed-order and revenue metrics without dynamic SQL.
-8. `writers.py` writes JSON and optional CSV files through temporary files followed by atomic replacement.
-9. `logging_utils.py` emits text or structured JSON operational events without changing report output.
+2. `api.py` exposes `/healthz`, `/metrics`, and `/v1/report`, validates HTTP query bounds, sandboxes database paths to a configured data root, and delegates analytics to the same core pipeline as the CLI.
+3. `schemas.py` is the canonical Pydantic configuration boundary for region, dates, date ordering, `top_limit`, `cohort_periods`, `product_limit`, and comparison preconditions.
+4. `path_safety.py` normalizes CLI output paths and prevents collisions with the input database or between outputs.
+5. `validation.py` opens SQLite read-only, enables defensive settings, runs `PRAGMA quick_check`, validates schema, and checks row integrity.
+6. `reporting.py` orchestrates deterministic summary, customer, monthly, cohort, product, and period analytics.
+7. `products.py` uses CTEs and SQLite window functions for product revenue distribution and Pareto concentration.
+8. `comparison.py` derives equal-length comparison windows without dynamic SQL.
+9. `writers.py` atomically writes JSON and optional CSV outputs for CLI runs.
+10. `logging_utils.py` emits human-readable logs or versioned structured JSON logs.
+
+## Shared analytics pipeline
+
+The HTTP API does not maintain a second query engine. `/v1/report` resolves a database below `DATA_QUERY_DATA_ROOT` and executes the same sequence used by the library/CLI core:
+
+```text
+connect_read_only
+  -> validate_schema
+  -> validate_data
+  -> build_report
+```
+
+This keeps report schema version 4, filters, ordering, security checks, and analytical semantics identical across interfaces.
+
+## HTTP service
+
+The optional `data-query-api` entry point runs FastAPI/Uvicorn. Configuration is explicit:
+
+- `DATA_QUERY_DATA_ROOT` selects the filesystem sandbox containing readable SQLite inputs;
+- `DATA_QUERY_HOST` controls the bind address;
+- `DATA_QUERY_PORT` is validated to `1..65535`;
+- `/healthz` reports service identity/version;
+- `/metrics` exposes in-process Prometheus-style counters;
+- `/v1/report` returns the versioned analytics report.
+
+Compose binds the development/smoke-test service to `127.0.0.1:8000` and mounts `/data` read-only. Production deployment topology is deliberately outside this repository; the application does not create load balancers, cloud networks, orchestration resources, or remote infrastructure state.
+
+## Observability
+
+`ServiceMetrics` maintains lock-protected counters for HTTP requests, report attempts, successful reports, input failures, and SQLite failures. Metrics contain aggregate counts only; report rows and database contents are not exported.
+
+CLI JSON logs follow `JSON_LOG_SCHEMA` version 1. Every structured event includes `schema_version`, `level`, `logger`, `message`, and `event`; event-specific fields cover input/output paths and error classes. Tests call real `cli.main()` paths to protect that contract.
 
 ## Advanced analytics
 
 ### Cohort retention
 
-Cohort assignment is based on each eligible customer's first completed order month. The output contains `(cohort_month, period)` rows with cohort size, retained customer count, and retention percentage. The caller controls the horizon through `cohort_periods`, bounded to 1..24 so the query and output cannot grow without limit.
-
-Report date filters constrain observed activity, not the historical first-completed-order month. This preserves stable cohort identity when a caller narrows the report window.
+Cohort identity is each eligible customer's first completed-order month. Date filters constrain observed activity without rewriting historical cohort assignment. `cohort_periods` is bounded to `1..24`.
 
 ### Equal-length period comparison
 
-`--compare-period` is opt-in and requires both `--start-date` and `--end-date`. `comparison.py` computes an immediately preceding window with exactly the same inclusive day count. Both windows use the same region scope. Percentage change is `null` when the previous baseline is zero instead of manufacturing an infinite percentage.
+`compare_period` requires both dates and compares the selected inclusive window with the immediately preceding equal-length window. A zero previous baseline yields `null` percentage change rather than infinity.
 
 ### Product concentration
 
-`products.py` aggregates completed-order revenue by product, then applies SQLite window functions over the complete scoped product population. Each product receives a deterministic revenue rank, revenue share, and cumulative revenue share. The report also exposes the top product's share and the minimum number of ranked products required to reach at least 80% of scoped revenue.
-
-`product_limit` is bounded to 1..100 and controls only how many ranked product rows are returned. `total_products`, `products_to_80_pct`, and `top_product_share_pct` are calculated from the complete scoped product set before output truncation, so reducing the display limit cannot change the concentration summary. Region and date filters apply to product activity before ranking.
+`products.py` ranks completed-order product revenue with SQLite window functions, computes per-product and cumulative revenue share, and reports the minimum product count required to reach at least 80% of scoped revenue. `product_limit` is bounded to `1..100` and truncates returned rows only after full-population concentration metrics are calculated.
 
 ## Trust boundaries
 
-User-controlled CLI values enter through `ReportFilters` in `schemas.py`. Region labels are bounded, trimmed, and checked for control characters; dates must parse as ISO dates; `top_limit` and `product_limit` are constrained to 1..100; `cohort_periods` is constrained to 1..24; reversed date ranges are rejected; and comparison mode requires a complete date window. `input_validation.py` is a small adapter used by `argparse`, not a second validation implementation.
+CLI and API values converge on `ReportFilters`. Region names are bounded and reject control characters; numeric limits are bounded; dates must parse correctly; reversed ranges and incomplete comparison windows are rejected.
 
-SQLite data is untrusted input as well. `validation.py` verifies table/column presence, date format, non-negative numeric values, and relationship integrity before analytics run. Query values are passed through SQLite parameter binding rather than interpolated into SQL strings. Advanced analytics use static SQL, including the product window-function query. See [THREAT_MODEL.md](../THREAT_MODEL.md) for the full asset/threat/mitigation model and residual risks.
+The HTTP `database` parameter is a relative selection beneath a configured data root. `api.py` resolves both root and candidate paths and rejects candidates that escape the root, including `..` traversal. The API never accepts an arbitrary host filesystem path.
+
+SQLite contents are untrusted. `validation.py` checks required schema, date shape, non-negative numeric values, and relationship integrity before analytics. Query values use SQLite parameter binding, not string interpolation.
 
 ## SQLite connection invariants
 
-`connect_read_only()` uses a percent-encoded file URI with `mode=ro`, then enforces:
+`connect_read_only()` uses a percent-encoded file URI with `mode=ro` and enforces:
 
 - `PRAGMA query_only = ON`
 - `PRAGMA trusted_schema = OFF`
 - `PRAGMA foreign_keys = ON`
-- a 5-second busy timeout
-- `PRAGMA quick_check` before the connection is returned
+- a finite busy timeout
+- `PRAGMA quick_check`
 
-The connection is closed on validation/setup failures. Tests also verify filenames containing URI-reserved characters and confirm write statements fail.
+Connections close on success and failure paths, and tests verify URI-reserved filenames and failed write attempts.
 
 ## Failure model
 
-Expected input/configuration failures use `InputError` and produce CLI exit code 2. Unexpected SQLite execution failures produce exit code 3. Successful validation/report execution returns 0. Structured logs include stable event names for validation failures, query failures, database validation, and report completion.
+CLI expected input/configuration failures use `InputError` and exit code 2; unexpected SQLite execution failures use exit code 3. The API maps `InputError` to HTTP 422 with a stable error envelope and maps SQLite execution errors to a sanitized HTTP 500 response that does not return raw database details. FastAPI itself returns 422 for query-schema violations.
 
-## Reproducibility and verification
+## Dependencies and reproducibility
 
-The direct runtime dependency is declared consistently in `pyproject.toml`, `requirements.txt`, and `project-metadata.json`; the complete runtime graph is generated in `uv.lock`. A repository contract test verifies those manifests agree and that the expected Pydantic transitive packages are present. CI verifies the lock with `uv lock --check`, installs it with `uv sync --frozen`, runs Ruff, strict mypy, the Python 3.11/3.12 test matrix with coverage, wheel installation, Docker/Compose execution, dependency auditing, secret scanning, and CodeQL.
+Direct runtime dependencies are exactly pinned and mirrored across `pyproject.toml`, `requirements.txt`, and `project-metadata.json`: FastAPI, Pydantic, and Uvicorn. `uv.lock` contains the generated transitive runtime graph, including Starlette and supporting packages. CI enforces `uv lock --check` and `uv sync --frozen`.
 
-## Why container tooling exists in a non-service project
+The CI matrix runs Python 3.11 and 3.12 coverage-gated tests, Ruff, strict mypy, package installation, locked-runtime CLI/API imports, Docker tests, Compose CLI execution, containerized API health/report/metrics smoke tests, dependency audits, secret scanning, and CodeQL.
 
-The `Dockerfile`, `docker-compose.yml`, and `.devcontainer/` files are reproducible development and verification environments for this local CLI. Compose builds the same application image and runs an isolated demo/test flow; it does not expose ports, create a long-running service, provision cloud resources, or represent infrastructure-as-code. The Dev Container gives contributors a repeatable editor/runtime environment. These artifacts must not be used as evidence that the repository is an infrastructure or backend-service project.
+## Why container tooling is not IaC
 
-The project is intentionally a CLI application rather than a service, so service-only concerns such as HTTP health endpoints, distributed tracing, autoscaling, deployment stages, and remote infrastructure state are out of scope.
+Docker, Compose, and the Dev Container provide reproducible execution environments for the application. The optional API service means Compose now has a localhost application port and healthcheck, but those artifacts still do not provision infrastructure. There is no Terraform/Kubernetes/Helm/Pulumi/Ansible/CloudFormation or remote infrastructure state in the repository.
