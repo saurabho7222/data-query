@@ -1,2 +1,2 @@
-# The application runtime uses only the Python standard library.
-# Install the package itself with: python -m pip install -e .
+# Direct runtime dependencies; keep in sync with pyproject.toml [project.dependencies].
+pydantic==2.13.4

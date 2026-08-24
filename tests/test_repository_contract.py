@@ -29,18 +29,29 @@ def test_json_metadata_mirrors_project_type_contract() -> None:
     assert payload["self_contained"] is True
 
 
-def test_runtime_dependency_metadata_matches_pyproject_and_lock() -> None:
+def test_runtime_dependency_metadata_matches_pyproject_requirements_and_lock() -> None:
     project = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     metadata = json.loads((REPO_ROOT / "project-metadata.json").read_text(encoding="utf-8"))
     runtime_dependencies = project["project"]["dependencies"]
+    requirements = [
+        line.strip()
+        for line in (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
 
-    assert runtime_dependencies == metadata["runtime_dependencies"]
+    assert runtime_dependencies == requirements == metadata["runtime_dependencies"]
     assert metadata["runtime_dependency_count"] == len(runtime_dependencies) == 1
     assert metadata["lockfile"] == "uv.lock"
 
     lock_text = (REPO_ROOT / "uv.lock").read_text(encoding="utf-8")
-    assert 'name = "pydantic"' in lock_text
-    assert 'name = "pydantic-core"' in lock_text
+    for dependency_name in (
+        "annotated-types",
+        "pydantic",
+        "pydantic-core",
+        "typing-extensions",
+        "typing-inspection",
+    ):
+        assert f'name = "{dependency_name}"' in lock_text
 
 
 def test_repository_contains_no_infrastructure_as_code_artifacts() -> None:
