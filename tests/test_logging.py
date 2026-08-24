@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 
-from data_query.logging_utils import JsonLogFormatter, configure_logger
+from data_query.logging_utils import JSON_LOG_SCHEMA, JsonLogFormatter, configure_logger
 
 
 def test_json_formatter_emits_stable_structured_fields() -> None:
@@ -26,7 +26,9 @@ def test_json_formatter_emits_stable_structured_fields() -> None:
         "level": "error",
         "logger": "data_query",
         "message": "database rejected",
+        "schema_version": 1,
     }
+    assert payload["schema_version"] == JSON_LOG_SCHEMA["schema_version"]
 
 
 def test_configure_logger_replaces_handlers_and_disables_propagation() -> None:
