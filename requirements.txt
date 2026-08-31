@@ -1,2 +1,2 @@
 # Direct runtime dependencies; keep in sync with pyproject.toml [project.dependencies].
-pydantic==2.13.4
+pydantic==2.13.5
