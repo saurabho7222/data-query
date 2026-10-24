@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
-dependencies = ["pydantic==2.13.4"]
+dependencies = ["pydantic==2.14.1"]
 keywords = ["cli", "sqlite", "analytics", "data-processing", "reporting"]
 classifiers = [
   "Development Status :: 4 - Beta",
