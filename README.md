@@ -269,3 +269,7 @@ requirements-dev.txt               exact development/security pins
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Keep features and fixes focused and include the tests that demonstrate their behavior. Use conventional commit prefixes for new work. `CHANGELOG.md` records user-visible changes.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
